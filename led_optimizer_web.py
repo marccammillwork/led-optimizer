@@ -99,21 +99,20 @@ def compute_power(allocations):
 st.title("LED Strip & Power Supply Optimizer")
 
 if 'runs' not in st.session_state:
-    st.session_state.runs = [""]
+    st.session_state.runs = ["" for _ in range(7)]
 
 st.subheader("Enter LED runs (inches):")
+add_run = False
 run_cols = st.columns([1]*len(st.session_state.runs))
 for idx, col in enumerate(run_cols):
-    st.session_state.runs[idx] = col.text_input(f"Run {idx+1}", st.session_state.runs[idx], key=f"run_{idx}")
+    value = col.text_input(f"Run {idx+1}", st.session_state.runs[idx], key=f"run_{idx}")
+    st.session_state.runs[idx] = value
+    if idx == len(st.session_state.runs)-1 and value and st.session_state.get("enter_pressed", False):
+        add_run = True
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("➕ Add Run"):
-        st.session_state.runs.append("")
-with col2:
-    if st.button("➖ Remove Run"):
-        if len(st.session_state.runs) > 1:
-            st.session_state.runs.pop()
+if add_run:
+    st.session_state.runs.append("")
+    st.session_state.enter_pressed = False
 
 if st.button("Optimize"):
     try:
