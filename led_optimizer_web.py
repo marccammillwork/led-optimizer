@@ -9,20 +9,17 @@ power_specs = [
     {'W': 60, 'cost': 82.72},
     {'W': 96, 'cost': 98.85},
 ]
-# Sort power specs by cost per watt (lowest first)
 power_specs.sort(key=lambda s: s['cost']/s['W'])
 
 @st.cache_data
 def optimized_allocation(runs, opts, max_connections):
     runs_left = runs.copy()
     allocations = []
-    # sort LED strip types by cost per inch ascending
     strip_types = sorted(opts.items(), key=lambda x: x[1]/x[0])
 
     while runs_left:
         best_pair = None
         best_strip = None
-        # try pairing two runs
         for i, r1 in enumerate(runs_left):
             for j, r2 in enumerate(runs_left):
                 if i == j:
@@ -42,12 +39,8 @@ def optimized_allocation(runs, opts, max_connections):
             runs_left.remove(best_pair[0])
             runs_left.remove(best_pair[1])
         else:
-            # single run
             r = max(runs_left)
-            length, cost = min(
-                (s for s in opts.items() if s[0] >= r),
-                key=lambda x: x[1]
-            )
+            length, cost = min((s for s in opts.items() if s[0] >= r), key=lambda x: x[1])
             allocations.append({
                 'strip_length': length,
                 'used': (r,),
@@ -69,10 +62,8 @@ def optimized_allocation(runs, opts, max_connections):
 
 @st.cache_data
 def compute_power(allocations):
-    # 3 W per foot, convert inches to feet
     segment_watts = [(l/12)*3 for alloc in allocations for l in alloc['used']]
     bins = []
-    # minimize number of supplies: try cheapest cost-per-watt first
     for load in sorted(segment_watts, reverse=True):
         placed = False
         for b in bins:
@@ -84,7 +75,6 @@ def compute_power(allocations):
                 break
         if placed:
             continue
-        # select spec with ≥20% oversize, cheapest first
         chosen = next((s for s in power_specs if s['W'] >= load * 1.2), None)
         if chosen is None:
             chosen = next((s for s in power_specs if s['W'] >= load), None)
@@ -107,12 +97,29 @@ def compute_power(allocations):
 
 # --- Streamlit UI ---
 st.title("LED Strip & Power Supply Optimizer")
-runs_input = st.text_input("Enter LED runs (inches), comma-separated:")
+
+if 'runs' not in st.session_state:
+    st.session_state.runs = [""]
+
+st.subheader("Enter LED runs (inches):")
+run_cols = st.columns([1]*len(st.session_state.runs))
+for idx, col in enumerate(run_cols):
+    st.session_state.runs[idx] = col.text_input(f"Run {idx+1}", st.session_state.runs[idx], key=f"run_{idx}")
+
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("+"):
+        st.session_state.runs.append("")
+with col2:
+    if st.button("-"):
+        if len(st.session_state.runs) > 1:
+            st.session_state.runs.pop()
+
 if st.button("Optimize"):
     try:
-        runs = [float(x) for x in runs_input.split(",") if x.strip()]
+        runs = [float(x) for x in st.session_state.runs if x.strip()]
     except ValueError:
-        st.error("Enter valid numeric run lengths separated by commas.")
+        st.error("Enter valid numeric run lengths.")
     else:
         allocations, summary = optimized_allocation(runs, strip_options, max_connections=10)
         st.subheader("LED Allocation")
