@@ -102,17 +102,17 @@ if 'runs' not in st.session_state:
     st.session_state.runs = ["" for _ in range(7)]
 
 st.subheader("Enter LED runs (inches):")
-add_run = False
-run_cols = st.columns([1]*len(st.session_state.runs))
-for idx, col in enumerate(run_cols):
-    value = col.text_input(f"Run {idx+1}", st.session_state.runs[idx], key=f"run_{idx}")
-    st.session_state.runs[idx] = value
-    if idx == len(st.session_state.runs)-1 and value and st.session_state.get("enter_pressed", False):
-        add_run = True
 
-if add_run:
+new_runs = []
+for idx, run_value in enumerate(st.session_state.runs):
+    value = st.text_input(f"Run {idx+1}", value=run_value, key=f"run_{idx}")
+    new_runs.append(value)
+
+st.session_state.runs = new_runs
+
+# If the last box has value, automatically add a new empty box
+if st.session_state.runs and st.session_state.runs[-1].strip():
     st.session_state.runs.append("")
-    st.session_state.enter_pressed = False
 
 if st.button("Optimize"):
     try:
