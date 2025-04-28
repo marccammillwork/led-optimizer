@@ -108,10 +108,10 @@ for idx, col in enumerate(run_cols):
 
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("+"):
+    if st.button("➕ Add Run"):
         st.session_state.runs.append("")
 with col2:
-    if st.button("-"):
+    if st.button("➖ Remove Run"):
         if len(st.session_state.runs) > 1:
             st.session_state.runs.pop()
 
