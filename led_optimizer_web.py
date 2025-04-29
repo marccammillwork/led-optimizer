@@ -112,7 +112,8 @@ df_edited = st.data_editor(
 df_clean = df_edited.replace({None: "", 'None': ""}).fillna("")
 st.session_state.df_orders = df_clean
 
-# Optimize button\if st.button("Optimize All Orders"):
+# Optimize button
+if st.button("Optimize All Orders"):
     # Parse orders
     df_in = st.session_state.df_orders.copy()
     df_in = df_in[df_in['Order'].astype(str).str.strip() != ""]
