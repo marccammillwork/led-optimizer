@@ -150,7 +150,12 @@ if st.button("Optimize All Orders"):
     rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
     costs = {L:rolls[L]*strip_options[L] for L in rolls.index}
     df_rolls = pd.DataFrame({'Count':rolls,'Cost':pd.Series(costs)})
-    st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
+    # Format Cost column with $ and two decimals, hide zeros
+    df_rolls_disp = df_rolls.copy()
+    df_rolls_disp['Cost'] = df_rolls_disp['Cost'].apply(lambda x: f"${x:.2f}")
+    df_rolls_disp['Count'] = df_rolls_disp['Count'].replace(0, "")
+    df_rolls_disp['Cost'] = df_rolls_disp['Cost'].replace("$0.00", "")
+    st.dataframe(df_rolls_disp, use_container_width=True)
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
     # Power
     df_power = pd.DataFrame(
