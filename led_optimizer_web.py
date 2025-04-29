@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import zipfile
 from datetime import datetime
 
 # --- Data and Logic ---
@@ -83,10 +84,10 @@ for i in range(10): cols[i+1].write(f"**Run {i+1} (in)**")
 new_orders=[]
 for idx, o in enumerate(st.session_state.orders):
     row = st.columns([1]+[1]*10)
-    order_no = row[0].text_input(f"ord_{idx}", o['order'], key=f"ord_{idx}")
+    order_no = row[0].text_input("", o['order'], key=f"ord_{idx}")
     runs=[]
     for j in range(10):
-        val = row[j+1].text_input(f"run_{idx}_{j}", o['runs'][j], key=f"run_{idx}_{j}")
+        val = row[j+1].text_input("", o['runs'][j], key=f"run_{idx}_{j}")
         runs.append(val)
     new_orders.append({'order':order_no,'runs':runs})
     # auto-add if last row populated
@@ -104,7 +105,7 @@ if event:
         st.error("Please ensure all run inputs are numeric.")
     else:
         # Global optimization
-        global_alloc, global_sum = optimized_allocation(global_runs, strip_options, max_connections=10)
+        global_alloc, global_sum = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
         df_led = pd.DataFrame(global_alloc)
         df_ps, tot_ps_cost, ps_counts = compute_power(global_alloc)
         # Per-order details and wasted inches
@@ -174,5 +175,30 @@ if event:
                 st.dataframe(ps_o)
                 st.write(f"**Supply Cost:** ${c_o:.2f}")
 
-st.markdown("---")
-st.write("*Batch optimization across orders with global and per-order summaries.*")
+# Export Data as ZIP
+        if order_details:
+            buffer = io.BytesIO()
+            folder_name = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+            with zipfile.ZipFile(buffer, 'w') as zf:
+                # overall summary
+                df_summary = df_rolls.copy()
+                with io.BytesIO() as xls_buf:
+                    with pd.ExcelWriter(xls_buf, engine='xlsxwriter') as writer:
+                        df_summary.to_excel(writer, sheet_name='Overall LED')
+                        df_power_summary.to_excel(writer, sheet_name='Overall Power', index=False)
+                        pd.DataFrame([global_sum]).to_excel(writer, sheet_name='Global Summary', index=False)
+                    xls_buf.seek(0)
+                    zf.writestr(f"{folder_name}/Overall.xlsx", xls_buf.read())
+                # per-order files
+                for od in order_details:
+                    with io.BytesIO() as xls_buf:
+                        with pd.ExcelWriter(xls_buf, engine='xlsxwriter') as writer:
+                            pd.DataFrame(od['alloc']).to_excel(writer, sheet_name='Allocations', index=False)
+                            pd.DataFrame([od['sum']]).to_excel(writer, sheet_name='Summary', index=False)
+                        xls_buf.seek(0)
+                        zf.writestr(f"{folder_name}/{od['order']}.xlsx", xls_buf.read())
+            buffer.seek(0)
+            st.download_button("Export Data", data=buffer.getvalue(), file_name=f"{folder_name}.zip", mime='application/zip')
+
+st.markdown("---")("---")
+st.write("*This data is optimized for reducing cost and waste. Power Supply requirements are calculated with headroom of between 20%-25%*")
