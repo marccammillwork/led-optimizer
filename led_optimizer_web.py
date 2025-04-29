@@ -92,14 +92,14 @@ def compute_power(allocations):
     return df, total_cost, counts
 
 # --- UI: Batch Orders ---
-st.title("LED Runs and Power Supply Wattage Optimizer")
+st.title("LED Strip & Power Supply Optimizer (Batch)")
 
 # Initialize DataFrame
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 if "df_orders" not in st.session_state:
     st.session_state.df_orders = pd.DataFrame([[""]*len(cols) for _ in range(5)], columns=cols)
 
-st.subheader("Enter order number. Enter Runs in Inches. Calculate")
+st.subheader("Enter Orders and Runs (Tab to navigate, paste rows)")
 # Spreadsheet-like editor (requires Streamlit >=1.19)
 df_edited = st.data_editor(
     st.session_state.df_orders,
@@ -150,25 +150,15 @@ if st.button("Optimize All Orders"):
     rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
     costs = {L:rolls[L]*strip_options[L] for L in rolls.index}
     df_rolls = pd.DataFrame({'Count':rolls,'Cost':pd.Series(costs)})
-    # Format Cost column with $ and two decimals, hide zeros
-    df_rolls_disp = df_rolls.copy()
-    df_rolls_disp['Cost'] = df_rolls_disp['Cost'].apply(lambda x: f"${x:.2f}")
-    df_rolls_disp['Count'] = df_rolls_disp['Count'].replace(0, "")
-    df_rolls_disp['Cost'] = df_rolls_disp['Cost'].replace("$0.00", "")
-    st.dataframe(df_rolls_disp, use_container_width=True)
+    st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
-        # Power summary
+    # Power
     df_power = pd.DataFrame(
-        [(W, ps_counts.get(W,0), ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
+        [(W,ps_counts.get(W,0),ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
          for W in sorted(ps_counts)],
-        columns=['Wattage', 'Count', 'Total Cost']
+        columns=['Wattage','Count','Total Cost']
     )
-    # Format Count and Total Cost
-    df_power_disp = df_power.copy()
-    df_power_disp['Count'] = df_power_disp['Count'].replace(0, "")
-    df_power_disp['Total Cost'] = df_power_disp['Total Cost'].apply(lambda x: f"${x:.2f}")
-    df_power_disp['Total Cost'] = df_power_disp['Total Cost'].replace("$0.00", "")
-    st.dataframe(df_power_disp, use_container_width=True)(0,"").astype(str), use_container_width=True)
+    st.dataframe(df_power.replace(0,"").astype(str), use_container_width=True)
     st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
     st.write(f"**Total Waste (in):** {sum_all['waste']:.2f}")
     st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
@@ -182,10 +172,7 @@ if st.button("Optimize All Orders"):
         with st.expander(f"Order {od['order']}"):
             df_o = pd.DataFrame(od['alloc'])
             df_o.index += 1
-            # Format allocation cost
-            df_o_disp = df_o.copy()
-            df_o_disp['cost'] = df_o_disp['cost'].apply(lambda x: f"${x:.2f}")
-            st.dataframe(df_o_disp, use_container_width=True)
+            st.dataframe(df_o, use_container_width=True)
             ps_o, cost_o, _ = compute_power(od['alloc'])
             st.dataframe(ps_o.drop(columns=['Supply #']).replace(0,"").astype(str), use_container_width=True)
             st.write(f"**Supply Cost:** ${cost_o:.2f}")
