@@ -105,18 +105,16 @@ if "df_orders" not in st.session_state:
 
 st.subheader("Orders (Edit directly like a spreadsheet)")
 # Spreadsheet-like input editor
-try:
-    df_edited = st.data_editor(
-        st.session_state.df_orders,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="data_editor"
-    )
-except AttributeError:
-    st.error("Your Streamlit version does not support data_editor. Please upgrade to ≥1.19.")
-    st.stop()
-# Persist edits
-st.session_state.df_orders = df_edited
+df_edited = st.data_editor(
+    st.session_state.df_orders,
+    num_rows="dynamic",
+    use_container_width=True,
+    key="data_editor"
+)
+# Convert any None/NaN back to blank strings
+df_clean = df_edited.fillna("")
+# Persist cleaned DataFrame
+st.session_state.df_orders = df_clean
 st.session_state.df_orders = df_edited
 
 # Optimize button triggers calculations
