@@ -97,178 +97,112 @@ def compute_power(allocations):
     counts = df['Wattage'].value_counts().to_dict()
     return df, total_cost, counts
 
-# --- UI: Batch Orders ---
-import re
+# --- UI: Batch Orders (Spreadsheet-like) ---
+# Define initial DataFrame with 5 blank rows and 10 run columns
+cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
+if "df_orders" not in st.session_state:
+    st.session_state.df_orders = pd.DataFrame([[""]*(len(cols)) for _ in range(5)], columns=cols)
 
-# Paste row(s) from Excel
-st.subheader("Paste rows from Excel")
-paste = st.text_area(
-    "Paste entire row(s) (Order # followed by runs, separated by tabs or commas):",
-    key="paste_area",
-    help="Copy a row from Excel (e.g. 25706<TAB>131.5<TAB>68.5 ...) and paste here"
+st.subheader("Orders (Edit directly like a spreadsheet)")
+# Use experimental_data_editor for Excel-like editing and paste support
+df_edited = st.experimental_data_editor(
+    st.session_state.df_orders,
+    num_rows="dynamic",
+    use_container_width=True,
+    key="data_editor"
 )
-if st.button("Parse Paste"):
-    for line in st.session_state.paste_area.splitlines():
-        parts = [p.strip() for p in re.split(r'	|,', line) if p.strip()]
-        if not parts:
-            continue
-        order = parts[0]
-        runs_list = parts[1:]
-        # find first empty order row
-        for o in st.session_state.orders:
-            if not o['order'] and all(not r for r in o['runs']):
-                o['order'] = order
-                # fill runs
-                for j, run_val in enumerate(runs_list):
-                    if j < len(o['runs']):
-                        o['runs'][j] = run_val
-                break
-    st.session_state.paste_area = ""
+st.session_state.df_orders = df_edited
 
-# Init 5 blank orders of 10 runs
-
-st.title("LED Strip & Power Supply Optimizer (Batch Mode)")
-
-# Init 5 blank orders of 10 runs
-if 'orders' not in st.session_state:
-    st.session_state.orders = [{'order':'','runs':['']*10} for _ in range(5)]
-
-# Input grid headers
-cols = st.columns([1]+[1]*10)
-cols[0].write("**Order #**")
-for i in range(10): cols[i+1].write(f"**Run {i+1} (in)**")
-
-# Input rows
-new_orders=[]
-for idx, o in enumerate(st.session_state.orders):
-    row = st.columns([1]+[1]*10)
-    order_no = row[0].text_input("", o['order'], key=f"ord_{idx}")
-    runs=[]
-    for j in range(10):
-        val = row[j+1].text_input("", o['runs'][j], key=f"run_{idx}_{j}")
-        runs.append(val)
-    new_orders.append({'order':order_no,'runs':runs})
-    # auto-add if last row populated
-    if idx==len(st.session_state.orders)-1 and (order_no.strip() or any(r.strip() for r in runs)):
-        st.session_state.orders.append({'order':'','runs':['']*10})
-st.session_state.orders=new_orders
-
-# Optimize button
-event = st.button("Optimize All Orders")
-if event:
-    # Collect global runs
-    try:
-        global_runs = [float(r) for o in st.session_state.orders for r in o['runs'] if r.strip()]
-    except:
-        st.error("Please ensure all run inputs are numeric.")
-    else:
-        # Global optimization
-        global_alloc, global_sum = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
-        df_led = pd.DataFrame(global_alloc)
-        df_ps, tot_ps_cost, ps_counts = compute_power(global_alloc)
-        # Per-order details and wasted inches
-        total_unit_waste=0
-        order_details=[]
-        for o in st.session_state.orders:
-            runs = [float(r) for r in o['runs'] if r.strip()]
-            if not runs: continue
-            alloc, summ = optimized_allocation(runs, strip_options, max_connections=10)
-            total_unit_waste+=summ['waste']
-            order_details.append({'order':o['order'],'alloc':alloc,'sum':summ})
-        waste_used = total_unit_waste - global_sum['waste']
-
-        # Overall summary
-        st.subheader("Overall Summary")
-        rolls = df_led['strip_length'].value_counts().reindex([59,118,236],fill_value=0)
-        led_costs={L:rolls[L]*strip_options[L] for L in rolls.index}
-        df_rolls=pd.DataFrame({'Count':rolls,'Cost':pd.Series(led_costs)})
-        st.dataframe(df_rolls)
-        st.write(f"**Total LED Cost:** ${global_sum['led_cost']:.2f}")
-        # Power summary
-        df_power_summary=pd.DataFrame(
-            [(W,ps_counts.get(W,0),ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
-             for W in sorted(ps_counts)],
-            columns=['Wattage','Count','Total Cost']
-        )
-        st.dataframe(df_power_summary)
-        st.write(f"**Total Supply Cost:** ${tot_ps_cost:.2f}")
-        st.write(f"**Total Waste (in):** {global_sum['waste']:.2f}")
-        st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
-
-                        # Per-order summary table
-        st.subheader("Orders Summary")
-        rows = []
-        for od in order_details:
-            # collect runs for this order
-            runs_raw = []
-            for o in st.session_state.orders:
-                if o['order'] == od['order']:
-                    runs_raw = [r for r in o['runs'] if r.strip()]
+# Optimize button triggers calculations
+if st.button("Optimize All Orders"):
+    # Parse orders DataFrame
+    df_in = st.session_state.df_orders.copy()
+    # Filter out empty rows (no Order# and no runs)
+    df_in = df_in[df_in['Order'].astype(str).str.strip() != ""]
+    orders = []
+    for _, row in df_in.iterrows():
+        order_no = str(row['Order']).strip()
+        runs = []
+        for c in cols[1:]:
+            val = str(row[c]).strip()
+            if val:
+                try:
+                    runs.append(float(val))
+                except:
+                    st.error(f"Invalid run value '{val}' in order {order_no}")
+                    runs = None
                     break
-            counts59 = sum(1 for a in od['alloc'] if a['strip_length']==59)
-            counts118 = sum(1 for a in od['alloc'] if a['strip_length']==118)
-            counts236 = sum(1 for a in od['alloc'] if a['strip_length']==236)
-            _, _, counts_sup = compute_power(od['alloc'])
-            # build row dict
-            row = {'Order': od['order']}
-            for i in range(10):
-                key = f'Run{i+1}'
-                if i < len(runs_raw):
-                    row[key] = str(runs_raw[i])
-                else:
-                    row[key] = ''
-            row['59"'] = counts59
-            row['118"'] = counts118
-            row['236"'] = counts236
-            row['36W'] = counts_sup.get(36, 0)
-            row['60W'] = counts_sup.get(60, 0)
-            row['96W'] = counts_sup.get(96, 0)
-            rows.append(row)
-        df_orders = pd.DataFrame(rows).fillna('')
-        df_orders.index += 1
-        # ensure run columns are strings
-        run_cols = [f'Run{i+1}' for i in range(10)]
-        for col in run_cols:
-            df_orders[col] = df_orders[col].astype(str)
-        st.dataframe(df_orders)
+        if runs is None:
+            return
+        orders.append({'order': order_no, 'runs': runs})
 
+    # Global optimization
+    global_runs = [r for o in orders for r in o['runs']]
+    global_alloc, global_sum = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
+    df_led = pd.DataFrame(global_alloc)
+    df_ps, tot_ps_cost, ps_counts = compute_power(global_alloc)
 
-        # Expanders for details
-        st.subheader("Order Details")
+    # Per-order details
+    order_details = []
+    total_unit_waste = 0
+    for o in orders:
+        alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
+        total_unit_waste += summ['waste']
+        order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
+    waste_used = total_unit_waste - global_sum['waste']
+
+    # Overall summary
+    st.subheader("Overall Summary")
+    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
+    led_costs = {L: rolls[L]*strip_options[L] for L in rolls.index}
+    df_rolls = pd.DataFrame({'Count': rolls, 'Cost': pd.Series(led_costs)})
+    st.dataframe(df_rolls)
+    st.write(f"**Total LED Cost:** ${global_sum['led_cost']:.2f}")
+    # Power summary
+    df_power_summary = pd.DataFrame(
+        [(W, ps_counts.get(W,0), ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
+         for W in sorted(ps_counts)],
+        columns=['Wattage','Count','Total Cost']
+    )
+    st.dataframe(df_power_summary)
+    st.write(f"**Total Supply Cost:** ${tot_ps_cost:.2f}")
+    st.write(f"**Total Waste (in):** {global_sum['waste']:.2f}")
+    st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
+
+    # Orders summary table
+    st.subheader("Orders Summary")
+    summary_rows = []
+    for od in order_details:
+        row = {'Order': od['order']}
+        # count rolls
+        summary_rows.append(row)
+    # Display empty, detailed below or skip if not needed
+    # Per-order details
+    st.subheader("Order Details")
+    for od in order_details:
+        with st.expander(f"Order {od['order']}"):
+            df_o = pd.DataFrame(od['alloc'])
+            df_o.index += 1
+            st.dataframe(df_o)
+            ps_o, c_o, _ = compute_power(od['alloc'])
+            ps_o = ps_o.drop(columns=['Supply #']).set_index('Wattage')
+            st.dataframe(ps_o)
+            st.write(f"**Supply Cost:** ${c_o:.2f}")
+
+    # Export Data as ZIP (CSV files)
+    buffer = io.BytesIO()
+    folder_name = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    with zipfile.ZipFile(buffer, 'w') as zf:
+        # overall rolls
+        zf.writestr(f"{folder_name}/OverallRolls.csv", df_rolls.to_csv(index=True))
+        zf.writestr(f"{folder_name}/OverallPower.csv", df_power_summary.to_csv(index=False))
+        zf.writestr(f"{folder_name}/GlobalSummary.csv", pd.DataFrame([global_sum]).to_csv(index=False))
+        # per-order files
         for od in order_details:
-            with st.expander(f"Order {od['order']}"):
-                df_o=pd.DataFrame(od['alloc'])
-                df_o.index+=1
-                st.dataframe(df_o)
-                ps_o,c_o,_=compute_power(od['alloc'])
-                ps_o=ps_o.drop(columns=['Supply #']).set_index(ps_o['Wattage'])
-                st.dataframe(ps_o)
-                st.write(f"**Supply Cost:** ${c_o:.2f}")
-
-# Export Data as ZIP
-        if order_details:
-            buffer = io.BytesIO()
-            folder_name = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-            with zipfile.ZipFile(buffer, 'w') as zf:
-                # overall summary
-                df_summary = df_rolls.copy()
-                with io.BytesIO() as xls_buf:
-                    with pd.ExcelWriter(xls_buf, engine='xlsxwriter') as writer:
-                        df_summary.to_excel(writer, sheet_name='Overall LED')
-                        df_power_summary.to_excel(writer, sheet_name='Overall Power', index=False)
-                        pd.DataFrame([global_sum]).to_excel(writer, sheet_name='Global Summary', index=False)
-                    xls_buf.seek(0)
-                    zf.writestr(f"{folder_name}/Overall.xlsx", xls_buf.read())
-                # per-order files
-                for od in order_details:
-                    with io.BytesIO() as xls_buf:
-                        with pd.ExcelWriter(xls_buf, engine='xlsxwriter') as writer:
-                            pd.DataFrame(od['alloc']).to_excel(writer, sheet_name='Allocations', index=False)
-                            pd.DataFrame([od['sum']]).to_excel(writer, sheet_name='Summary', index=False)
-                        xls_buf.seek(0)
-                        zf.writestr(f"{folder_name}/{od['order']}.xlsx", xls_buf.read())
-            buffer.seek(0)
-            st.download_button("Export Data", data=buffer.getvalue(), file_name=f"{folder_name}.zip", mime='application/zip')
+            zf.writestr(f"{folder_name}/{od['order']}_alloc.csv", pd.DataFrame(od['alloc']).to_csv(index=False))
+            zf.writestr(f"{folder_name}/{od['order']}_summary.csv", pd.DataFrame([od['sum']]).to_csv(index=False))
+    buffer.seek(0)
+    st.download_button("Export Data", data=buffer.getvalue(), file_name=f"{folder_name}.zip", mime='application/zip')
 
 st.markdown("---")
 st.write("*This data is optimized for reducing cost and waste. Power Supply requirements are calculated with headroom of between 20%-25%*")
