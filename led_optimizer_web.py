@@ -115,7 +115,6 @@ df_edited = st.data_editor(
 df_clean = df_edited.replace({None: 0, 'None': 0, '': 0}).fillna(0)
 # Persist cleaned DataFrame
 st.session_state.df_orders = df_clean
-st.session_state.df_orders = df_edited
 
 # Optimize button triggers calculations
 if st.button("Optimize All Orders"):
