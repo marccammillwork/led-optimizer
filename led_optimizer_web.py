@@ -105,12 +105,25 @@ if "df_orders" not in st.session_state:
 
 st.subheader("Orders (Edit directly like a spreadsheet)")
 # Use Streamlit's data editor for spreadsheet-like input (requires Streamlit ≥1.19)
-df_edited = st.data_editor(
-    st.session_state.df_orders,
-    num_rows=\"dynamic\",
-    use_container_width=True,
-    key=\"data_editor\"
-)
+# Editable spreadsheet input
+try:
+    df_edited = st.data_editor(
+        st.session_state.df_orders,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="data_editor"
+    )
+except AttributeError:
+    try:
+        df_edited = st.experimental_data_editor(
+            st.session_state.df_orders,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="data_editor"
+        )
+    except AttributeError:
+        st.error("Your Streamlit version does not support data editor. Please upgrade to the latest version.")
+        st.stop()
 # Persist edits
 st.session_state.df_orders = df_edited
 st.session_state.df_orders = df_edited
