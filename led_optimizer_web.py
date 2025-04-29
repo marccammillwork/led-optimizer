@@ -175,5 +175,4 @@ if event:
                 st.write(f"**Supply Cost:** ${c_o:.2f}")
 
 st.markdown("---")
-st.write("*Batch optimization across orders with global and per-order summaries.*")("---")
-st.write("*Batch optimization across orders, global and per-order breakdown.*")
+st.write("*Batch optimization across orders with global and per-order summaries.*")
