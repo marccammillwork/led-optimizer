@@ -104,10 +104,7 @@ if "df_orders" not in st.session_state:
     st.session_state.df_orders = pd.DataFrame([[""]*(len(cols)) for _ in range(5)], columns=cols)
 
 st.subheader("Orders (Edit directly like a spreadsheet)")
-# Use Streamlit's data editor for spreadsheet-like input (requires Streamlit ≥1.19)
-# Editable spreadsheet input: choose available editor
-if hasattr(st, 'data_editor'):
-    # Editable spreadsheet input
+# Spreadsheet-like input editor
 try:
     df_edited = st.data_editor(
         st.session_state.df_orders,
@@ -116,18 +113,11 @@ try:
         key="data_editor"
     )
 except AttributeError:
-    try:
-        df_edited = st.experimental_data_editor(
-            st.session_state.df_orders,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="data_editor"
-        )
-    except AttributeError:
-        st.error("Your Streamlit version does not support data editor. Please upgrade to the latest version.")
-        st.stop()
+    st.error("Your Streamlit version does not support data_editor. Please upgrade to ≥1.19.")
+    st.stop()
 # Persist edits
-st.session_state.df_orders = df_editedf_orders = df_edited
+st.session_state.df_orders = df_edited
+st.session_state.df_orders = df_edited
 
 # Optimize button triggers calculations
 if st.button("Optimize All Orders"):
