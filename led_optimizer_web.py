@@ -117,10 +117,10 @@ st.session_state.df_orders = df_edited
 if st.button("Optimize All Orders"):
     # Parse orders DataFrame
     df_in = st.session_state.df_orders.copy()
-    # Filter out empty rows (no Order# and no runs)
+    # Filter out empty rows (no Order#)
     df_in = df_in[df_in['Order'].astype(str).str.strip() != ""]
     orders = []
-        for _, row in df_in.iterrows():
+    for _, row in df_in.iterrows():
         order_no = str(row['Order']).strip()
         runs = []
         runs_valid = True
@@ -136,7 +136,7 @@ if st.button("Optimize All Orders"):
                     break
         if not runs_valid:
             st.stop()
-        orders.append({'order': order_no, 'runs': runs})({'order': order_no, 'runs': runs})
+        orders.append({'order': order_no, 'runs': runs})
 
     # Global optimization
     global_runs = [r for o in orders for r in o['runs']]
