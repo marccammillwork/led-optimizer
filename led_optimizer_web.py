@@ -200,5 +200,5 @@ if event:
             buffer.seek(0)
             st.download_button("Export Data", data=buffer.getvalue(), file_name=f"{folder_name}.zip", mime='application/zip')
 
-st.markdown("---")("---")
+st.markdown("---")
 st.write("*This data is optimized for reducing cost and waste. Power Supply requirements are calculated with headroom of between 20%-25%*")
