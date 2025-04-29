@@ -136,21 +136,30 @@ if event:
         st.write(f"**Total Waste (in):** {global_sum['waste']:.2f}")
         st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
 
-        # Per-order summary table
+                # Per-order summary table
         st.subheader("Orders Summary")
-        rows=[]
+        rows = []
         for od in order_details:
-            # runs as floats list
-            runs_list=[float(r) for r in st.session_state.orders[next(i for i,o in enumerate(st.session_state.orders) if o['order']==od['order'])]['runs'] if r.strip()]
-            counts59= sum(1 for a in od['alloc'] if a['strip_length']==59)
-            counts118=sum(1 for a in od['alloc'] if a['strip_length']==118)
-            counts236=sum(1 for a in od['alloc'] if a['strip_length']==236)
-            _,_,counts_sup=compute_power(od['alloc'])
-            rows.append({'Order':od['order'],**{f'Run{i+1}':runs_list[i] if i<len(runs_list) else '': '' for i in range(10)},
-                         '59"':counts59,'118"':counts118,'236"':counts236,
-                         '36W':counts_sup.get(36,0),'60W':counts_sup.get(60,0),'96W':counts_sup.get(96,0)})
-        df_orders=pd.DataFrame(rows).fillna('')
-        df_orders.index+=1
+            # collect runs for this order
+            runs_list = [float(r) for o in st.session_state.orders if o['order']==od['order'] for r in o['runs'] if r.strip()]
+            counts59 = sum(1 for a in od['alloc'] if a['strip_length']==59)
+            counts118 = sum(1 for a in od['alloc'] if a['strip_length']==118)
+            counts236 = sum(1 for a in od['alloc'] if a['strip_length']==236)
+            _, _, counts_sup = compute_power(od['alloc'])
+            # build row dict
+            row = {'Order': od['order']}
+            for i in range(10):
+                key = f'Run{i+1}'
+                row[key] = runs_list[i] if i < len(runs_list) else ''
+            row['59"'] = counts59
+            row['118"'] = counts118
+            row['236"'] = counts236
+            row['36W'] = counts_sup.get(36, 0)
+            row['60W'] = counts_sup.get(60, 0)
+            row['96W'] = counts_sup.get(96, 0)
+            rows.append(row)
+        df_orders = pd.DataFrame(rows).fillna('')
+        df_orders.index += 1
         st.dataframe(df_orders)
 
         # Expanders for details
