@@ -181,7 +181,7 @@ if st.button("Optimize All Orders"):
     st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
     st.write(f"**Total Waste (in):** {sum_all['waste']:.2f}")
-    st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
+    st.write(f"**Inches Used from Potential Waste:** {waste_used:.2f}")
     # Power
         # Power summary (keep all columns, just hide the DataFrame index)
     df_power = pd.DataFrame(
