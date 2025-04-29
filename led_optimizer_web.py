@@ -186,6 +186,16 @@ if st.button("Optimize All Orders"):
             df_o_disp = df_o.copy()
             df_o_disp['cost'] = df_o_disp['cost'].apply(lambda x: f"${x:.2f}")
             st.dataframe(df_o_disp, use_container_width=True)
+            # Power supply details
+            ps_o, cost_o, _ = compute_power(od['alloc'])
+            # Format power supply table
+            ps_o_disp = ps_o.drop(columns=['Supply #']).copy()
+            ps_o_disp['Cost'] = ps_o_disp['Cost'].apply(lambda x: f"${x:.2f}")
+            ps_o_disp['Remaining (W)'] = ps_o_disp['Remaining (W)'].apply(lambda x: f"{x:.1f}W")
+            # Hide zero values
+            ps_o_disp = ps_o_disp.replace({'Count':{0:""}, 'Loads (W)':{"":"")}
+            st.dataframe(ps_o_disp, use_container_width=True)
+            st.write(f"**Supply Cost:** ${cost_o:.2f}")
             ps_o, cost_o, _ = compute_power(od['alloc'])
             st.dataframe(ps_o.drop(columns=['Supply #']).replace(0,"").astype(str), use_container_width=True)
             st.write(f"**Supply Cost:** ${cost_o:.2f}")
