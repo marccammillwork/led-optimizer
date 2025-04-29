@@ -105,7 +105,24 @@ if "df_orders" not in st.session_state:
 
 st.subheader("Orders (Edit directly like a spreadsheet)")
 # Use experimental_data_editor for Excel-like editing and paste support
-df_edited = st.experimental_data_editor(
+# Use appropriate data editor depending on Streamlit version
+if hasattr(st, 'data_editor'):
+    df_edited = st.data_editor(
+        st.session_state.df_orders,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="data_editor"
+    )
+elif hasattr(st, 'experimental_data_editor'):
+    df_edited = st.experimental_data_editor(
+        st.session_state.df_orders,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="data_editor"
+    )
+else:
+    st.warning("Your Streamlit version does not support data_editor. Falling back to static display.")
+    df_edited = st.session_state.df_orders(
     st.session_state.df_orders,
     num_rows="dynamic",
     use_container_width=True,
