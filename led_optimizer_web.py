@@ -215,7 +215,7 @@ if st.button("Optimize All Orders"):
             st.dataframe(df_o, use_container_width=True)
             ps_o, cost_o, _ = compute_power(od['alloc'])
             st.dataframe(ps_o.drop(columns=['Supply #']).replace(0,"").astype(str), use_container_width=True)
-            st.write(f"**Supply Cost:** ${cost_o:.2f}")
+            st.write(f"**Power Supply Cost:** ${cost_o:.2f}")
 
     # Export ZIP of CSVs
     buf = io.BytesIO()
