@@ -111,8 +111,8 @@ df_edited = st.data_editor(
     use_container_width=True,
     key="data_editor"
 )
-# Convert any None/NaN back to blank strings
-df_clean = df_edited.fillna("")
+# Convert None or 'None' entries to blank strings and fill NaN
+df_clean = df_edited.replace({None: "", 'None': ""}).fillna("")
 # Persist cleaned DataFrame
 st.session_state.df_orders = df_clean
 st.session_state.df_orders = df_edited
