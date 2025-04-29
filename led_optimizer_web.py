@@ -132,8 +132,8 @@ if st.button("Optimize All Orders"):
                     st.error(f"Invalid run value '{val}' in order {order_no}")
                     runs = None
                     break
-        if runs is None:
-            return
+                if runs is None:
+            st.stop()
         orders.append({'order': order_no, 'runs': runs})
 
     # Global optimization
