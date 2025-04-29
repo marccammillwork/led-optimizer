@@ -98,6 +98,35 @@ def compute_power(allocations):
     return df, total_cost, counts
 
 # --- UI: Batch Orders ---
+import re
+
+# Paste row(s) from Excel
+st.subheader("Paste rows from Excel")
+paste = st.text_area(
+    "Paste entire row(s) (Order # followed by runs, separated by tabs or commas):",
+    key="paste_area",
+    help="Copy a row from Excel (e.g. 25706<TAB>131.5<TAB>68.5 ...) and paste here"
+)
+if st.button("Parse Paste"):
+    for line in st.session_state.paste_area.splitlines():
+        parts = [p.strip() for p in re.split(r'	|,', line) if p.strip()]
+        if not parts:
+            continue
+        order = parts[0]
+        runs_list = parts[1:]
+        # find first empty order row
+        for o in st.session_state.orders:
+            if not o['order'] and all(not r for r in o['runs']):
+                o['order'] = order
+                # fill runs
+                for j, run_val in enumerate(runs_list):
+                    if j < len(o['runs']):
+                        o['runs'][j] = run_val
+                break
+    st.session_state.paste_area = ""
+
+# Init 5 blank orders of 10 runs
+
 st.title("LED Strip & Power Supply Optimizer (Batch Mode)")
 
 # Init 5 blank orders of 10 runs
