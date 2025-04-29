@@ -73,7 +73,7 @@ def optimized_allocation(runs, opts, max_connections):
     total_conns = sum(len(a['used']) for a in allocations)
     total_led_cost = sum(a['cost'] for a in allocations)
     total_waste = sum(a['waste'] for a in allocations)
-    return allocations, {'connections': total_conns, 'led_cost': total_led_cost, 'waste': total_waste}: total_conns, 'led_cost': total_led_cost, 'waste': total_waste}
+    return allocations, {'connections': total_conns, 'led_cost': total_led_cost, 'waste': total_waste}
 
 @st.cache_data
 def compute_power(allocations):
