@@ -239,14 +239,18 @@ if st.button("Optimize All Orders"):
             st.dataframe(ps_o_disp, use_container_width=True)
             st.write(f"**Supply Cost:** ${cost_o:.2f}")
 
-    # Cutoffs expander
+        # Cutoffs expander
     scrap_list = [a["waste"] for a in alloc_all if a["waste"] > 0]
     df_cutoffs = pd.DataFrame({
         "Cutoff Number": list(range(1, len(scrap_list) + 1)),
         "Length": [round(w, 2) for w in scrap_list],
     })
+    # add total row
+    df_cutoffs_disp = df_cutoffs.copy()
+    total_length = df_cutoffs_disp['Length'].sum()
+    df_cutoffs_disp.loc[len(df_cutoffs_disp)] = ['Total', round(total_length, 2)]
     with st.expander("Cutoffs"):
-        st.dataframe(df_cutoffs, use_container_width=True)
+        st.dataframe(df_cutoffs_disp, use_container_width=True)
 
     # Export ZIP of CSVs
     buf = io.BytesIO()
