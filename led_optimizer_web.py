@@ -166,12 +166,16 @@ if event:
         st.write(f"**Total Waste (in):** {global_sum['waste']:.2f}")
         st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
 
-                # Per-order summary table
+                        # Per-order summary table
         st.subheader("Orders Summary")
         rows = []
         for od in order_details:
             # collect runs for this order
-            runs_list = [float(r) for o in st.session_state.orders if o['order']==od['order'] for r in o['runs'] if r.strip()]
+            runs_raw = []
+            for o in st.session_state.orders:
+                if o['order'] == od['order']:
+                    runs_raw = [r for r in o['runs'] if r.strip()]
+                    break
             counts59 = sum(1 for a in od['alloc'] if a['strip_length']==59)
             counts118 = sum(1 for a in od['alloc'] if a['strip_length']==118)
             counts236 = sum(1 for a in od['alloc'] if a['strip_length']==236)
@@ -180,7 +184,10 @@ if event:
             row = {'Order': od['order']}
             for i in range(10):
                 key = f'Run{i+1}'
-                row[key] = runs_list[i] if i < len(runs_list) else ''
+                if i < len(runs_raw):
+                    row[key] = str(runs_raw[i])
+                else:
+                    row[key] = ''
             row['59"'] = counts59
             row['118"'] = counts118
             row['236"'] = counts236
@@ -190,7 +197,12 @@ if event:
             rows.append(row)
         df_orders = pd.DataFrame(rows).fillna('')
         df_orders.index += 1
+        # ensure run columns are strings
+        run_cols = [f'Run{i+1}' for i in range(10)]
+        for col in run_cols:
+            df_orders[col] = df_orders[col].astype(str)
         st.dataframe(df_orders)
+
 
         # Expanders for details
         st.subheader("Order Details")
