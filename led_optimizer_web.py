@@ -20,12 +20,13 @@ def optimized_allocation(runs, opts, max_connections):
     allocations = []
     strip_types = sorted(opts.items(), key=lambda x: x[1]/x[0])
     while runs_left:
-        # try pairing two runs
         best_pair = None
         best_strip = None
+        # Try pairing two runs
         for i, r1 in enumerate(runs_left):
             for j, r2 in enumerate(runs_left):
-                if i == j: continue
+                if i == j:
+                    continue
                 total = r1 + r2
                 for length, cost in strip_types:
                     if total <= length and (best_pair is None or cost < opts[best_strip]):
@@ -41,9 +42,9 @@ def optimized_allocation(runs, opts, max_connections):
             runs_left.remove(best_pair[0])
             runs_left.remove(best_pair[1])
         else:
-            # single-run
+            # Single-run
             r = max(runs_left)
-            candidates = [(L,C) for L,C in opts.items() if L >= r]
+            candidates = [(L, C) for L, C in opts.items() if L >= r]
             if candidates:
                 length, cost = min(candidates, key=lambda x: x[1])
             else:
@@ -57,10 +58,15 @@ def optimized_allocation(runs, opts, max_connections):
             runs_left.remove(r)
         if sum(len(a['used']) for a in allocations) > max_connections:
             break
+
     total_conns = sum(len(a['used']) for a in allocations)
     total_cost = sum(a['cost'] for a in allocations)
     total_waste = sum(a['waste'] for a in allocations)
-    return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
+    return allocations, {
+        'connections': total_conns,
+        'led_cost': total_cost,
+        'waste': total_waste
+    }
 
 @st.cache_data
 def compute_power(allocations):
@@ -69,207 +75,192 @@ def compute_power(allocations):
     for load in sorted(segment_watts, reverse=True):
         placed = False
         for b in bins:
-            if b['slots']>0 and b['remaining']>=load:
+            if b['slots'] > 0 and b['remaining'] >= load:
                 b['remaining'] -= load
                 b['slots'] -= 1
                 b['loads'].append(load)
                 placed = True
                 break
-        if placed: continue
+        if placed:
+            continue
         spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
-        if not spec: spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
-        bins.append({'W': spec['W'], 'cost': spec['cost'],
-                     'remaining': spec['W']-load, 'slots':9, 'loads':[load]})
+        if not spec:
+            spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
+        bins.append({
+            'W': spec['W'],
+            'cost': spec['cost'],
+            'remaining': spec['W'] - load,
+            'slots': 9,
+            'loads': [load]
+        })
+
     df = pd.DataFrame([{
         'Supply #': i+1,
-        'Wattage':b['W'],
-        'Cost':b['cost'],
-        'Loads (W)':", ".join(f"{l:.1f}" for l in b['loads']),
-        'Remaining (W)': round(b['remaining'],1)
-    } for i,b in enumerate(bins)])
+        'Wattage': b['W'],
+        'Cost': b['cost'],
+        'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']),
+        'Remaining (W)': round(b['remaining'], 1)
+    } for i, b in enumerate(bins)])
     total_cost = df['Cost'].sum()
     counts = df['Wattage'].value_counts().to_dict()
     return df, total_cost, counts
 
 # --- UI: Batch Orders ---
-st.title("LED Strip & Power Supply Optimizer")
+st.title("LED Strip & Power Supply Optimizer (Batch)")
 
 # Initialize DataFrame
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 if "df_orders" not in st.session_state:
-    st.session_state.df_orders = pd.DataFrame([[""]*len(cols) for _ in range(5)], columns=cols)
+    st.session_state.df_orders = pd.DataFrame(
+        [[""] * len(cols) for _ in range(5)], columns=cols
+    )
 
-st.subheader("Enter Order #. Then LED Runs in inches. Calculate (Tab to navigate, paste rows)")
-# Spreadsheet-like editor (requires Streamlit >=1.19)
+st.subheader("Enter Orders and Runs (Tab to navigate, paste rows)")
 df_edited = st.data_editor(
     st.session_state.df_orders,
     num_rows="dynamic",
     use_container_width=True
 )
-# Clean pasted/edited data: replace None/'None'/NaN with empty strings
-df_clean = df_edited.replace({None: "", 'None': ""}).fillna("")
+# Clean pasted/edited data
+df_clean = df_edited.replace({None: "", "None": ""}).fillna("")
 st.session_state.df_orders = df_clean
 
 # Optimize button
 if st.button("Optimize All Orders"):
     # Build orders list
     df_in = st.session_state.df_orders.copy()
-    df_in = df_in[df_in['Order'].astype(str).str.strip()!='']
+    df_in = df_in[df_in["Order"].astype(str).str.strip() != ""]
     orders = []
     for _, row in df_in.iterrows():
-        o_no = str(row['Order']).strip()
+        o_no = str(row["Order"]).strip()
         runs = []
         for c in cols[1:]:
             val = row[c]
-            if val in ('', None):
+            if val in ("", None):
                 continue
             try:
                 runs.append(float(val))
-            except Exception:
+            except:
                 st.error(f"Invalid run value '{val}' in order {o_no}")
                 st.stop()
-        orders.append({'order':o_no,'runs':runs})
+        orders.append({"order": o_no, "runs": runs})
 
     # Global optimization
-    global_runs = [r for o in orders for r in o['runs']]
-    alloc_all, sum_all = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
+    global_runs = [r for o in orders for r in o["runs"]]
+    alloc_all, sum_all = optimized_allocation(
+        global_runs, strip_options, max_connections=len(global_runs)
+    )
     df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all)
 
-    # Per-order details
+    # Per-order details & waste calculation
     order_details = []
     total_unit_waste = 0
     for o in orders:
-        alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
-        total_unit_waste += summ['waste']
-        order_details.append({'order':o['order'],'alloc':alloc,'sum':summ})
-    waste_used = total_unit_waste - sum_all['waste']
-  
-      # Calculate dollars saved by re‐using cutoffs, per roll length
-    # 1) Sum per‐order (pre‐global) waste by roll length
-    scrap_pre = {}
-    for od in order_details:
-        for a in od['alloc']:
-            L = a['strip_length']
-            scrap_pre[L] = scrap_pre.get(L, 0) + a['waste']
+        alloc, summ = optimized_allocation(
+            o["runs"], strip_options, max_connections=10
+        )
+        total_unit_waste += summ["waste"]
+        order_details.append({"order": o["order"], "alloc": alloc, "sum": summ})
+    waste_used = total_unit_waste - sum_all["waste"]
 
-    # 2) Sum global (post‐global) waste by roll length
-    scrap_post = {}
-    for a in alloc_all:
-        L = a['strip_length']
-        scrap_post[L] = scrap_post.get(L, 0) + a['waste']
-
-    # 3) Compute saved inches per roll type, multiply by cost/inch
-    dollars_saved = 0.0
-    for L, pre in scrap_pre.items():
-        post = scrap_post.get(L, 0)
-        saved_inches = pre - post
-        if saved_inches > 0:
-            cost_per_inch = strip_options[L] / L
-            dollars_saved += saved_inches * cost_per_inch
-
-    # 4) Display
-    st.write(f"**Dollars Saved from Reuse:** ${dollars_saved:.2f}")
-    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
-
-
-    # Overall Summary
-    st.header("Overall Summary")
-    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
-    costs = {L:rolls[L]*strip_options[L] for L in rolls.index}
-    df_rolls = pd.DataFrame({'Count':rolls,'Cost':pd.Series(costs)})
-    st.subheader("LEDS")
-      # ==== Order‐level statistics ==== #
+    # Order-level statistics
     total_orders = len(order_details)
-
-    # compute per‐order total cost (LED + supply)
     order_costs = []
     for od in order_details:
-        # LED cost
         led_cost = sum(item['cost'] for item in od['alloc'])
-        # supply cost
         _, supply_cost, _ = compute_power(od['alloc'])
-        total = led_cost + supply_cost
-        order_costs.append((od['order'], total))
+        order_costs.append((od['order'], led_cost + supply_cost))
+    if total_orders:
+        avg_cost = sum(t for _, t in order_costs) / total_orders
+        min_order, min_cost = min(order_costs, key=lambda x: x[1])
+        max_order, max_cost = max(order_costs, key=lambda x: x[1])
+    else:
+        avg_cost, min_order, min_cost, max_order, max_cost = 0.0, "N/A", 0.0, "N/A", 0.0
 
-    # extract just the totals
-    totals = [t for _, t in order_costs]
-    avg_cost = sum(totals) / total_orders if total_orders else 0.0
-    min_order, min_cost = min(order_costs, key=lambda x: x[1]) if totals else ("N/A", 0.0)
-    max_order, max_cost = max(order_costs, key=lambda x: x[1]) if totals else ("N/A", 0.0)
-
-    # display
-    st.markdown("**Order‐level Summary**")
+    st.markdown("**Order-level Summary**")
     st.write(f"- **Total Orders:** {total_orders}")
     st.write(f"- **Average Cost per Order:** ${avg_cost:.2f}")
     st.write(f"- **Minimum Order Cost:** ${min_cost:.2f} (Order {min_order})")
     st.write(f"- **Maximum Order Cost:** ${max_cost:.2f} (Order {max_order})")
     st.markdown("---")
 
-    st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
+    # Overall Summary
+    st.header("Overall Summary")
+    st.subheader("LEDS")
+    rolls = df_led["strip_length"].value_counts().reindex([59,118,236], fill_value=0)
+    costs = {L: rolls[L] * strip_options[L] for L in rolls.index}
+    df_rolls = pd.DataFrame({"Count": rolls, "Cost": pd.Series(costs)})
+    df_rolls["Cost"] = df_rolls["Cost"].apply(lambda x: f"${x:.2f}")
+    df_rolls["Count"] = df_rolls["Count"].replace(0, "")
+    df_rolls["Cost"] = df_rolls["Cost"].replace("$0.00", "")
+    st.dataframe(df_rolls, use_container_width=True)
+
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
-    st.write(f"**Total Cutoffs (in):** {sum_all['waste']:.2f}")
-    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
-    # Power
-        # Power summary (keep all columns, just hide the DataFrame index)
+
+    # Power summary
     df_power = pd.DataFrame(
         [
-            (W, ps_counts.get(W,0), ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
+            (W,
+             ps_counts.get(W,0),
+             ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
             for W in sorted(ps_counts)
         ],
         columns=["Wattage","Count","Total Cost"]
     )
-    # Format the Total Cost column
     df_power["Total Cost"] = df_power["Total Cost"].apply(lambda x: f"${x:.2f}")
-    df_power["Count"] = df_power["Count"].replace(0, "")
-    df_power["Total Cost"] = df_power["Total Cost"].replace("$0.00", "")
-
-    # Display, hiding only the automatically added 0,1,2… index
+    df_power["Count"] = df_power["Count"].replace(0,"")
+    df_power["Total Cost"] = df_power["Total Cost"].replace("$0.00","")
     st.dataframe(df_power, use_container_width=True, hide_index=True)
 
-    st.write(f"**Total Power Supply Cost:** ${ps_cost:.2f}")
+    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
+    st.write(f"**Total Cutoffs (in):** {sum_all['waste']:.2f}")
+    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
 
- #////////////////////////////////////////////////////////////////////////////////////
     # Order Details
-  
     st.header("Order Details")
     seen = set()
     for od in order_details:
-        if od['order'] in seen: continue
-        seen.add(od['order'])
+        if od["order"] in seen:
+            continue
+        seen.add(od["order"])
         with st.expander(f"Order {od['order']}"):
-            df_o = pd.DataFrame(od['alloc'])
+            df_o = pd.DataFrame(od["alloc"])
             df_o.index += 1
-            st.dataframe(df_o, use_container_width=True)
-            ps_o, cost_o, _ = compute_power(od['alloc'])
-            st.dataframe(ps_o.drop(columns=['Supply #']).replace(0,"").astype(str), use_container_width=True)
-            st.write(f"**Power Supply Cost:** ${cost_o:.2f}")
-          
-    # Order Details
-    st.header("Order Details")
-    seen = set()
-    for od in order_details:
-        # … your existing expander code …
+            df_o_disp = df_o.copy()
+            df_o_disp["cost"] = df_o_disp["cost"].apply(lambda x: f"${x:.2f}")
+            st.dataframe(df_o_disp, use_container_width=True)
 
-    # === New: Cutoffs Expander ===
-    # Build list of final scraps from global allocation
-    scrap_list = [a['waste'] for a in alloc_all if a['waste'] > 0]
+            ps_o, cost_o, _ = compute_power(od["alloc"])
+            ps_o_disp = ps_o.drop(columns=["Supply #"]).copy()
+            ps_o_disp["Cost"] = ps_o_disp["Cost"].apply(lambda x: f"${x:.2f}")
+            ps_o_disp["Remaining (W)"] = ps_o_disp["Remaining (W)"].apply(lambda x: f"{x:.1f}W")
+            ps_o_disp = ps_o_disp.replace({"Count": {0:""}, "Loads (W)": {"":""}})
+            st.dataframe(ps_o_disp, use_container_width=True)
+            st.write(f"**Supply Cost:** ${cost_o:.2f}")
+
+    # Cutoffs expander
+    scrap_list = [a["waste"] for a in alloc_all if a["waste"] > 0]
     df_cutoffs = pd.DataFrame({
-        "Cutoff Number": range(1, len(scrap_list) + 1),
+        "Cutoff Number": list(range(1, len(scrap_list) + 1)),
         "Length": [round(w, 2) for w in scrap_list],
     })
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs, use_container_width=True)
 
-    # === Export ZIP of CSVs ===
+    # Export ZIP of CSVs
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     with zipfile.ZipFile(buf, "w") as zf:
-        # … existing files …
         zf.writestr(f"{folder}/OverallRolls.csv", df_rolls.to_csv())
-        # … other exports …
-        zf.writestr(f"{folder}/{od['order']}_summary.csv", pd.DataFrame([od["sum"]]).to_csv(index=False))
-        # Add Cutoffs CSV last:
+        zf.writestr(f"{folder}/OverallPower.csv", df_power.to_csv(index=False))
+        zf.writestr(f"{folder}/GlobalSummary.csv",
+                    pd.DataFrame([sum_all]).to_csv(index=False))
+        for od in order_details:
+            zf.writestr(f"{folder}/{od['order']}_alloc.csv",
+                        pd.DataFrame(od["alloc"]).to_csv(index=False))
+            zf.writestr(f"{folder}/{od['order']}_summary.csv",
+                        pd.DataFrame([od["sum"]]).to_csv(index=False))
         zf.writestr(f"{folder}/Cutoffs.csv", df_cutoffs.to_csv(index=False))
     buf.seek(0)
     st.download_button(
@@ -278,19 +269,6 @@ if st.button("Optimize All Orders"):
         file_name=f"{folder}.zip",
         mime="application/zip"
     )
-
-    # Export ZIP of CSVs
-    buf = io.BytesIO()
-    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    with zipfile.ZipFile(buf,'w') as zf:
-        zf.writestr(f"{folder}/OverallRolls.csv", df_rolls.to_csv())
-        zf.writestr(f"{folder}/OverallPower.csv", df_power.to_csv(index=False))
-        zf.writestr(f"{folder}/GlobalSummary.csv", pd.DataFrame([sum_all]).to_csv(index=False))
-        for od in order_details:
-            zf.writestr(f"{folder}/{od['order']}_alloc.csv", pd.DataFrame(od['alloc']).to_csv(index=False))
-            zf.writestr(f"{folder}/{od['order']}_summary.csv", pd.DataFrame([od['sum']]).to_csv(index=False))
-    buf.seek(0)
-    st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
 
 st.markdown("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
