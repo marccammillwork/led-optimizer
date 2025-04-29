@@ -92,14 +92,14 @@ def compute_power(allocations):
     return df, total_cost, counts
 
 # --- UI: Batch Orders ---
-st.title("LED Strip & Power Supply Optimizer (Batch)")
+st.title("LED Runs and Power Supply Wattage Optimizer")
 
 # Initialize DataFrame
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 if "df_orders" not in st.session_state:
     st.session_state.df_orders = pd.DataFrame([[""]*len(cols) for _ in range(5)], columns=cols)
 
-st.subheader("Enter Orders and Runs (Tab to navigate, paste rows)")
+st.subheader("Enter order number. Enter Runs in Inches. Calculate")
 # Spreadsheet-like editor (requires Streamlit >=1.19)
 df_edited = st.data_editor(
     st.session_state.df_orders,
