@@ -199,7 +199,7 @@ if st.button("Optimize All Orders"):
     # Display, hiding only the automatically added 0,1,2… index
     st.dataframe(df_power, use_container_width=True, hide_index=True)
 
-    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
+    st.write(f"**Total Power Supply Cost:** ${ps_cost:.2f}")
 
  #////////////////////////////////////////////////////////////////////////////////////
     # Order Details
