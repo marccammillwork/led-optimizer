@@ -244,6 +244,40 @@ if st.button("Optimize All Orders"):
             ps_o, cost_o, _ = compute_power(od['alloc'])
             st.dataframe(ps_o.drop(columns=['Supply #']).replace(0,"").astype(str), use_container_width=True)
             st.write(f"**Power Supply Cost:** ${cost_o:.2f}")
+          
+    # Order Details
+    st.header("Order Details")
+    seen = set()
+    for od in order_details:
+        # … your existing expander code …
+
+    # === New: Cutoffs Expander ===
+    # Build list of final scraps from global allocation
+    scrap_list = [a['waste'] for a in alloc_all if a['waste'] > 0]
+    df_cutoffs = pd.DataFrame({
+        "Cutoff Number": range(1, len(scrap_list) + 1),
+        "Length": [round(w, 2) for w in scrap_list],
+    })
+    with st.expander("Cutoffs"):
+        st.dataframe(df_cutoffs, use_container_width=True)
+
+    # === Export ZIP of CSVs ===
+    buf = io.BytesIO()
+    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    with zipfile.ZipFile(buf, "w") as zf:
+        # … existing files …
+        zf.writestr(f"{folder}/OverallRolls.csv", df_rolls.to_csv())
+        # … other exports …
+        zf.writestr(f"{folder}/{od['order']}_summary.csv", pd.DataFrame([od["sum"]]).to_csv(index=False))
+        # Add Cutoffs CSV last:
+        zf.writestr(f"{folder}/Cutoffs.csv", df_cutoffs.to_csv(index=False))
+    buf.seek(0)
+    st.download_button(
+        "Export Data",
+        data=buf.getvalue(),
+        file_name=f"{folder}.zip",
+        mime="application/zip"
+    )
 
     # Export ZIP of CSVs
     buf = io.BytesIO()
