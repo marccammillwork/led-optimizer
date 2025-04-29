@@ -154,6 +154,7 @@ if st.button("Optimize All Orders"):
     st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
     # Power
+    st.subheader("Power Supplies")
     df_power = pd.DataFrame(
         [(W,ps_counts.get(W,0),ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
          for W in sorted(ps_counts)],
