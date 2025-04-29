@@ -156,18 +156,24 @@ if st.button("Optimize All Orders"):
     st.write(f"**Total Waste (in):** {sum_all['waste']:.2f}")
     st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
     # Power
-    st.subheader("Power Supplies")
+        # Power summary (keep all columns, just hide the DataFrame index)
     df_power = pd.DataFrame(
-        [(W,ps_counts.get(W,0),ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
-         for W in sorted(ps_counts)],
-        columns=['Wattage','Count','Total Cost']
+        [
+            (W, ps_counts.get(W,0), ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
+            for W in sorted(ps_counts)
+        ],
+        columns=["Wattage","Count","Total Cost"]
     )
-    df_power_disp = df_power.drop(columns=["Wattage"])
-    st.dataframe(df_power_disp, use_container_width=True, hide_index=True)
+    # Format the Total Cost column
+    df_power["Total Cost"] = df_power["Total Cost"].apply(lambda x: f"${x:.2f}")
+    df_power["Count"] = df_power["Count"].replace(0, "")
+    df_power["Total Cost"] = df_power["Total Cost"].replace("$0.00", "")
 
+    # Display, hiding only the automatically added 0,1,2… index
+    st.dataframe(df_power, use_container_width=True, hide_index=True)
 
+    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
 
-    st.write(f"**Total Power Supply Cost:** ${ps_cost:.2f}")
  #////////////////////////////////////////////////////////////////////////////////////
     # Order Details
   
