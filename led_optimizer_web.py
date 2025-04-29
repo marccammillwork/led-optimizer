@@ -170,10 +170,13 @@ if st.button("Optimize All Orders"):
 
     # Overall summary
     st.subheader("Overall Summary")
+    # LED roll usage summary
     rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
     led_costs = {L: rolls[L]*strip_options[L] for L in rolls.index}
     df_rolls = pd.DataFrame({'Count': rolls, 'Cost': pd.Series(led_costs)})
-    st.dataframe(df_rolls)
+    # hide zero values for clarity
+    df_rolls_disp = df_rolls.replace(0, "")
+    st.dataframe(df_rolls_disp)
     st.write(f"**Total LED Cost:** ${global_sum['led_cost']:.2f}")
     # Power summary
     df_power_summary = pd.DataFrame(
@@ -181,10 +184,11 @@ if st.button("Optimize All Orders"):
          for W in sorted(ps_counts)],
         columns=['Wattage','Count','Total Cost']
     )
-    st.dataframe(df_power_summary)
+    df_power_summary_disp = df_power_summary.replace(0, "")
+    st.dataframe(df_power_summary_disp)
     st.write(f"**Total Supply Cost:** ${tot_ps_cost:.2f}")
     st.write(f"**Total Waste (in):** {global_sum['waste']:.2f}")
-    st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
+    st.write(f"**Inches Used from Waste:** {waste_used:.2f}"):.2f}")
 
     # Orders summary table
     st.subheader("Orders Summary")
@@ -195,15 +199,20 @@ if st.button("Optimize All Orders"):
         summary_rows.append(row)
     # Display empty, detailed below or skip if not needed
     # Per-order details
-    st.subheader("Order Details")
+        st.subheader("Order Details")
+    seen_orders = set()
     for od in order_details:
-        with st.expander(f"Order {od['order']}"):
+        if od['order'] in seen_orders:
+            continue
+        seen_orders.add(od['order'])
+        with st.expander(f"Order {od['order']}")(f"Order {od['order']}"):
             df_o = pd.DataFrame(od['alloc'])
             df_o.index += 1
             st.dataframe(df_o)
             ps_o, c_o, _ = compute_power(od['alloc'])
             ps_o = ps_o.drop(columns=['Supply #']).set_index('Wattage')
-            st.dataframe(ps_o)
+                        ps_o_disp = ps_o.replace(0, "")
+            st.dataframe(ps_o_disp)
             st.write(f"**Supply Cost:** ${c_o:.2f}")
 
     # Export Data as ZIP (CSV files)
