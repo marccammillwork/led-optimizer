@@ -15,36 +15,65 @@ power_specs = [
 power_specs.sort(key=lambda s: s['cost']/s['W'])
 
 @st.cache_data
+
 def optimized_allocation(runs, opts, max_connections):
+    """
+    Allocate LED runs to strips, returning list of allocations and summary.
+    Ensures no ValueError by safe fallback for single runs.
+    """
     runs_left = runs.copy()
     allocations = []
+    # sort strip types by cost per inch
     strip_types = sorted(opts.items(), key=lambda x: x[1]/x[0])
     while runs_left:
-        best_pair = None; best_strip = None
+        # try to pair two runs greedily
+        best_pair = None
+        best_strip = None
         for i, r1 in enumerate(runs_left):
             for j, r2 in enumerate(runs_left):
-                if i == j: continue
+                if i == j:
+                    continue
                 total = r1 + r2
                 for length, cost in strip_types:
                     if total <= length and (best_pair is None or cost < opts[best_strip]):
-                        best_pair, best_strip = (r1, r2), length
+                        best_pair = (r1, r2)
+                        best_strip = length
         if best_pair:
-            allocations.append({'order_runs': best_pair, 'strip_length': best_strip,
-                                'used': best_pair, 'waste': best_strip - sum(best_pair),
-                                'cost': opts[best_strip]})
-            runs_left.remove(best_pair[0]); runs_left.remove(best_pair[1])
+            allocations.append({
+                'order_runs': best_pair,
+                'strip_length': best_strip,
+                'used': best_pair,
+                'waste': best_strip - sum(best_pair),
+                'cost': opts[best_strip]
+            })
+            runs_left.remove(best_pair[0])
+            runs_left.remove(best_pair[1])
         else:
+            # single-run allocation
             r = max(runs_left)
-            length, cost = min((s for s in opts.items() if s[0] >= r), key=lambda x: x[1])
-            allocations.append({'order_runs': (r,), 'strip_length': length,
-                                'used': (r,), 'waste': length - r,
-                                'cost': cost})
+            # find candidates that fit
+            candidates = [(length, cost) for length, cost in opts.items() if length >= r]
+            if candidates:
+                # cheapest roll among candidates
+                length, cost = min(candidates, key=lambda x: x[1])
+            else:
+                # no roll fits: pick largest roll length
+                length, cost = max(opts.items(), key=lambda x: x[0])
+            allocations.append({
+                'order_runs': (r,),
+                'strip_length': length,
+                'used': (r,),
+                'waste': length - r,
+                'cost': cost
+            })
             runs_left.remove(r)
-        if sum(len(a['used']) for a in allocations) > max_connections: break
+        # respect max_connections
+        if sum(len(a['used']) for a in allocations) > max_connections:
+            break
     total_conns = sum(len(a['used']) for a in allocations)
     total_led_cost = sum(a['cost'] for a in allocations)
     total_waste = sum(a['waste'] for a in allocations)
-    return allocations, {'connections': total_conns, 'led_cost': total_led_cost, 'waste': total_waste}
+    return allocations, {'connections': total_conns, 'led_cost': total_led_cost, 'waste': total_waste}: total_conns, 'led_cost': total_led_cost, 'waste': total_waste}
 
 @st.cache_data
 def compute_power(allocations):
