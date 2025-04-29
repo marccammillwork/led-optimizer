@@ -162,7 +162,10 @@ if st.button("Optimize All Orders"):
          for W in sorted(ps_counts)],
         columns=['Wattage','Count','Total Cost']
     )
-    st.dataframe(df_power.replace(0,"").astype(str), use_container_width=True)
+    df_power_disp = df_power.drop(columns=["Wattage"])
+    st.dataframe(df_power_disp, use_container_width=True, hide_index=True)
+
+
     st.write(f"**Total Power Supply Cost:** ${ps_cost:.2f}")
  #////////////////////////////////////////////////////////////////////////////////////
     # Order Details
