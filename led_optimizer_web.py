@@ -92,7 +92,7 @@ def compute_power(allocations):
     return df, total_cost, counts
 
 # --- UI: Batch Orders ---
-st.title("LED Strip & Power Supply Optimizer (Batch)")
+st.title("LED Strip & Power Supply Optimizer")
 
 # Initialize DataFrame
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
