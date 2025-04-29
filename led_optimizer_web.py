@@ -111,8 +111,8 @@ df_edited = st.data_editor(
     use_container_width=True,
     key="data_editor"
 )
-# Convert None or 'None' entries to blank strings and fill NaN
-df_clean = df_edited.replace({None: "", 'None': ""}).fillna("")
+# Convert None/'None'/blank to numeric zero, fill NaN with 0
+df_clean = df_edited.replace({None: 0, 'None': 0, '': 0}).fillna(0)
 # Persist cleaned DataFrame
 st.session_state.df_orders = df_clean
 st.session_state.df_orders = df_edited
@@ -125,6 +125,21 @@ if st.button("Optimize All Orders"):
     df_in = df_in[df_in['Order'].astype(str).str.strip() != ""]
     orders = []
     for _, row in df_in.iterrows():
+        order_no = str(row['Order']).strip()
+        runs = []
+        # parse run columns, skip zeros
+        for c in cols[1:]:
+            val = row[c]
+            if val in (0, 0.0):
+                continue
+            try:
+                runs.append(float(val))
+            except Exception:
+                st.error(f"Invalid run value '{val}' in order {order_no}")
+                st.stop()
+        orders.append({'order': order_no, 'runs': runs})
+
+    # Global optimization():
         order_no = str(row['Order']).strip()
         runs = []
         # parse run columns, skip empty/None entries
