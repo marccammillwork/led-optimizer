@@ -120,21 +120,23 @@ if st.button("Optimize All Orders"):
     # Filter out empty rows (no Order# and no runs)
     df_in = df_in[df_in['Order'].astype(str).str.strip() != ""]
     orders = []
-    for _, row in df_in.iterrows():
+        for _, row in df_in.iterrows():
         order_no = str(row['Order']).strip()
         runs = []
+        runs_valid = True
+        # parse run columns
         for c in cols[1:]:
             val = str(row[c]).strip()
             if val:
                 try:
                     runs.append(float(val))
-                except:
+                except ValueError:
                     st.error(f"Invalid run value '{val}' in order {order_no}")
-                    runs = None
+                    runs_valid = False
                     break
-                if runs is None:
+        if not runs_valid:
             st.stop()
-        orders.append({'order': order_no, 'runs': runs})
+        orders.append({'order': order_no, 'runs': runs})({'order': order_no, 'runs': runs})
 
     # Global optimization
     global_runs = [r for o in orders for r in o['runs']]
