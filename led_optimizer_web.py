@@ -168,7 +168,7 @@ if st.button("Optimize All Orders"):
     df_power_disp['Count'] = df_power_disp['Count'].replace(0, "")
     df_power_disp['Total Cost'] = df_power_disp['Total Cost'].apply(lambda x: f"${x:.2f}")
     df_power_disp['Total Cost'] = df_power_disp['Total Cost'].replace("$0.00", "")
-    st.dataframe(df_power_disp, use_container_width=True)(0,"").astype(str), use_container_width=True)
+    st.dataframe(df_power_disp, use_container_width=True)
     st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
     st.write(f"**Total Waste (in):** {sum_all['waste']:.2f}")
     st.write(f"**Inches Used from Waste:** {waste_used:.2f}")
