@@ -144,7 +144,13 @@ if st.button("Optimize All Orders"):
         total_unit_waste += summ['waste']
         order_details.append({'order':o['order'],'alloc':alloc,'sum':summ})
     waste_used = total_unit_waste - sum_all['waste']
-  
+
+    # Overall Summary
+    st.header("Overall Summary")
+    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
+    costs = {L:rolls[L]*strip_options[L] for L in rolls.index}
+    df_rolls = pd.DataFrame({'Count':rolls,'Cost':pd.Series(costs)})
+
     # ==== Order‐level statistics ==== #
     total_orders = len(order_details)
 
@@ -172,12 +178,6 @@ if st.button("Optimize All Orders"):
     st.write(f"- **Maximum Order Cost:** ${max_cost:.2f} (Order {max_order})")
     st.markdown("---")
 
-  
-    # Overall Summary
-    st.header("Overall Summary")
-    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
-    costs = {L:rolls[L]*strip_options[L] for L in rolls.index}
-    df_rolls = pd.DataFrame({'Count':rolls,'Cost':pd.Series(costs)})
     st.subheader("LEDS")
     st.dataframe(df_rolls.replace(0,"").astype(str), use_container_width=True)
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
