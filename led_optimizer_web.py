@@ -182,6 +182,7 @@ if st.button("Optimize All Orders"):
             pdf.ln(4)
             pdf.cell(0, 8, f"Total LED Cost: ${summ['led_cost']:.2f}", ln=1)
             pdf.cell(0, 8, f"Total Supply Cost: ${compute_power(od['alloc'])[1]:.2f}", ln=1)
+            pdf.cell(0, 8, f"Total Light Treament Cost: ${summ['led_cost+alloc']:.2f}", ln=1)
             pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
             pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
