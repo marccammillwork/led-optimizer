@@ -179,14 +179,20 @@ if st.button("Optimize All Orders"):
                 for cell in row:
                     pdf.cell(40, 8, str(cell), border=1)
                 pdf.ln()
-            pdf.ln(4)
-            pdf.cell(0, 8, f"Total LED Cost: ${summ['led_cost']:.2f}", ln=1)
-            pdf.cell(0, 8, f"Total Supply Cost: ${compute_power(od['alloc'])[1]:.2f}", ln=1)
-            total_combined_cost = summ['led_cost'] + compute_power(od['alloc'])[1]
-            pdf.cell(0, 8, f"Total LED + Power Supply Cost: ${total_combined_cost:.2f}", ln=1)
-            pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
+                        pdf.ln(4)
+            # Add summary rows as table entries
+            summary_rows = [
+                ("Total LED Cost", f"${summ['led_cost']:.2f}"),
+                ("Total Supply Cost", f"${compute_power(od['alloc'])[1]:.2f}"),
+                ("Total LED + Power Supply Cost", f"${total_combined_cost:.2f}"),
+                ("Total Waste (in)", f"{summ['waste']:.2f}")
+            ]
+            for label, val in summary_rows:
+                pdf.cell(40, 8, label, border=1)
+                pdf.cell(40, 8, val, border=1)
+                pdf.ln()
             pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
-            zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
+            zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
         # Batch PDF report for all orders
         batch_pdf = FPDF()
         batch_pdf.set_auto_page_break(auto=True, margin=15)
