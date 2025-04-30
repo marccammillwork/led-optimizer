@@ -108,6 +108,7 @@ with config:
             step=0.1,
             key="form_watt"
         )
+        # LED strip lengths and costs
         strip_df = pd.DataFrame(
             list(st.session_state["strip_options"].items()),
             columns=["Length (in)", "Cost"]
@@ -122,7 +123,23 @@ with config:
                 "Cost": st.column_config.NumberColumn("Cost per strip", width="small")
             }
         )
-
+        # Power supply specs
+        power_df = pd.DataFrame(st.session_state["power_specs"])
+        power_df = st.data_editor(
+            power_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="form_power",
+            column_config={
+                "W": st.column_config.NumberColumn("Supply Wattage", width="small"),
+                "cost": st.column_config.NumberColumn("Cost per supply", width="small")
+            }
+        )
+        apply = st.form_submit_button("Apply Settings")
+        if apply:
+            # Save updated settings
+            st.session_state["watt_per_foot"] = wp
+            st.session_state["strip_options"] = dict(zip(strip_df["Length (in)"], strip_df["Cost"]))
             ps_list = power_df.to_dict("records")
             st.session_state["power_specs"] = sorted(ps_list, key=lambda s: s['cost']/s['W'])
 
