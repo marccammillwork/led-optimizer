@@ -3,7 +3,6 @@ import pandas as pd
 import io
 import zipfile
 from datetime import datetime
-# PDF export support
 from fpdf import FPDF
 
 # --- Data and Logic ---
@@ -124,10 +123,8 @@ df_edited = st.data_editor(
     use_container_width=True
 )
 # Clean pasted/edited data
-df_clean = df_edited.replace({None: "", "None": ""}).fillna("")
-st.session_state.df_orders = df_clean
+st.session_state.df_orders = df_edited.replace({None: "", "None": ""}).fillna("")
 
-# Optimize button
 if st.button("Optimize All Orders"):
     # Build orders list
     df_in = st.session_state.df_orders.copy()
@@ -199,95 +196,3 @@ if st.button("Optimize All Orders"):
     st.dataframe(df_rolls, use_container_width=True)
 
     st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
-
-    # Power summary
-    df_power = pd.DataFrame(
-        [
-            (W,
-             ps_counts.get(W,0),
-             ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
-            for W in sorted(ps_counts)
-        ],
-        columns=["Wattage","Count","Total Cost"]
-    )
-    df_power["Total Cost"] = df_power["Total Cost"].apply(lambda x: f"${x:.2f}")
-    df_power["Count"] = df_power["Count"].replace(0,"")
-    df_power["Total Cost"] = df_power["Total Cost"].replace("$0.00","")
-    st.dataframe(df_power, use_container_width=True, hide_index=True)
-
-    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
-    st.write(f"**Total Cutoffs (in):** {sum_all['waste']:.2f}")
-    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
-
-    # Order Details
-    st.header("Order Details")
-    seen = set()
-    for od in order_details:
-        if od["order"] in seen:
-            continue
-        seen.add(od["order"])
-        with st.expander(f"Order {od['order']}"):
-            df_o = pd.DataFrame(od["alloc"])
-            df_o.index += 1
-            df_o_disp = df_o.copy()
-            df_o_disp["cost"] = df_o_disp["cost"].apply(lambda x: f"${x:.2f}")
-            st.dataframe(df_o_disp, use_container_width=True)
-
-            ps_o, cost_o, _ = compute_power(od["alloc"])
-            ps_o_disp = ps_o.drop(columns=["Supply #"]).copy()
-            ps_o_disp["Cost"] = ps_o_disp["Cost"].apply(lambda x: f"${x:.2f}")
-            ps_o_disp["Remaining (W)"] = ps_o_disp["Remaining (W)"].apply(lambda x: f"{x:.1f}W")
-            ps_o_disp = ps_o_disp.replace({"Count": {0:""}, "Loads (W)": {"":""}})
-            st.dataframe(ps_o_disp, use_container_width=True)
-            st.write(f"**Supply Cost:** ${cost_o:.2f}")
-
-        # Cutoffs expander
-    scrap_list = [a["waste"] for a in alloc_all if a["waste"] > 0]
-    df_cutoffs = pd.DataFrame({
-        "Cutoff Number": list(range(1, len(scrap_list) + 1)),
-        "Length": [round(w, 2) for w in scrap_list],
-    })
-    # add total row
-    df_cutoffs_disp = df_cutoffs.copy()
-    total_length = df_cutoffs_disp['Length'].sum()
-    df_cutoffs_disp.loc[len(df_cutoffs_disp)] = ['Total', round(total_length, 2)]
-    with st.expander("Cutoffs"):
-        st.dataframe(df_cutoffs_disp, use_container_width=True)
-
-        # Export ZIP with Excel and PDF folders
-    buf = io.BytesIO()
-    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    excel_dir = f"{folder}/Excel"
-    pdf_dir = f"{folder}/PDF"
-    with zipfile.ZipFile(buf, "w") as zf:
-        for od in order_details:
-            order = od['order']
-            df_o = pd.DataFrame(od['alloc'])
-            # Excel export
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                df_o.to_excel(writer, index=False, sheet_name='Allocations')
-            excel_buffer.seek(0)
-            zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
-            # PDF export
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font('Arial', size=12)
-            # Header row
-            for col in df_o.columns:
-                pdf.cell(40, 10, str(col), border=1)
-            pdf.ln()
-            # Data rows
-            for row in df_o.itertuples(index=False):
-                for cell in row:
-                    pdf.cell(40, 10, str(cell), border=1)
-                pdf.ln()
-            pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
-            zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
-    buf.seek(0)
-    st.download_button(
-        "Export Data",
-        data=buf.getvalue(),
-        file_name=f"{folder}.zip",
-        mime="application/zip"
-    )
