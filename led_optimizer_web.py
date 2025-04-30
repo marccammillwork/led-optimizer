@@ -51,8 +51,7 @@ def optimized_allocation(runs, opts, max_connections):
     total_waste = sum(a['waste'] for a in allocations)
     return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
 
-@st.cache_data
-def compute_power(allocations, watt_per_foot, power_specs) watt_per_foot, power_specs):
+def compute_power(allocations, watt_per_foot, power_specs):
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
