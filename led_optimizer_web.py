@@ -94,12 +94,17 @@ if st.button('Optimize All Orders'):
         o_no = str(row['Order']).strip()
         runs = []
         for c in cols[1:]:
-            val = row[c]
-            if val in ('', None): continue
-            try: runs.append(float(val))
+            raw = row[c]
+            # Normalize whitespace and empty values
+            val_str = str(raw).strip()
+            if val_str == '':
+                continue
+            try:
+                num = float(val_str)
             except ValueError:
-                st.error(f"Invalid run value '{val}' in order {o_no}")
+                st.error(f"Invalid run value '{raw}' (interpreted as '{val_str}') in order {o_no}")
                 st.stop()
+            runs.append(num)
         orders.append({'order': o_no, 'runs': runs})
 
     # Per-order allocations
