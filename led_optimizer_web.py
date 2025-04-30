@@ -254,7 +254,7 @@ if st.button("Optimize All Orders"):
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs_disp, use_container_width=True)
 
-                # Export ZIP with CSV, Excel, and PDF
+                    # Export ZIP with CSV, Excel, and PDF
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     csv_dir = f"{folder}/CSV"
@@ -265,25 +265,27 @@ if st.button("Optimize All Orders"):
             order = od['order']
             df_o = pd.DataFrame(od['alloc'])
             summ = od['sum']
+
             # CSV export
-            zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
-            zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
+            csv_data = df_o.to_csv(index=False)
+            zf.writestr(f"{csv_dir}/{order}_alloc.csv", csv_data)
+            summary_data = pd.DataFrame([summ]).to_csv(index=False)
+            zf.writestr(f"{csv_dir}/{order}_summary.csv", summary_data)
 
             # Excel export
             excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
                 df_o.to_excel(writer, sheet_name="Allocations", index=False)
                 pd.DataFrame([summ]).to_excel(writer, sheet_name="Summary", index=False)
-                writer.save()
             excel_buffer.seek(0)
             zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
 
             # PDF export
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font('Arial', 'B', 12)
+            pdf.set_font("Arial", "B", 12)
             pdf.cell(0, 10, f"Order {order} Report", ln=1)
-            pdf.set_font('Arial', '', 10)
+            pdf.set_font("Arial", "", 10)
             # Table header
             for col in df_o.columns:
                 pdf.cell(40, 8, str(col), border=1)
@@ -293,15 +295,14 @@ if st.button("Optimize All Orders"):
                 for cell in row:
                     pdf.cell(40, 8, str(cell), border=1)
                 pdf.ln()
-            # Summary
             pdf.ln(4)
             pdf.cell(0, 8, f"Total LED Cost: ${summ['led_cost']:.2f}", ln=1)
             pdf.cell(0, 8, f"Total Supply Cost: ${compute_power(od['alloc'])[1]:.2f}", ln=1)
             pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
-            pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
-            zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buffer.read())
+            pdf_buf = io.BytesIO(pdf.output(dest="S").encode("latin1"))
+            zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
 
-        buf.seek(0)
+    buf.seek(0)
     st.download_button(
         "Export Data",
         data=buf.getvalue(),
@@ -310,5 +311,4 @@ if st.button("Optimize All Orders"):
     )
 
 st.markdown("---")
-st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")"*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
-
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
