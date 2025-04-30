@@ -163,9 +163,7 @@ if st.button("Optimize All Orders"):
             order = od['order']
             df_o = pd.DataFrame(od['alloc'])
             summ = od['sum']
-            # CSV
-            zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
-            zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
+           
             # Excel (CSV format)
             zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", df_o.to_csv(index=False))
             # PDF
