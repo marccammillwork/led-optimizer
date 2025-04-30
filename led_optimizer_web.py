@@ -78,7 +78,7 @@ def compute_power(allocations):
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- Configuration Settings ---
-config = st.sidebar.expander("Configuration", expanded=False)
+config = st.sidebar.expander("Configure Specs", expanded=False)
 with config:
     # LED watt per foot
     watt_per_foot = st.number_input(
