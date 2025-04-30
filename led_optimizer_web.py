@@ -143,4 +143,4 @@ if st.button('Optimize All Orders'):
     st.download_button('Export Data', data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
 
 st.markdown('---')
-st.write('*Optimized for cost
+st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
