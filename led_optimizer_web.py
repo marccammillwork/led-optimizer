@@ -86,24 +86,43 @@ df_clean = df_edited.replace({None: '', 'None': ''}).fillna('')
 st.session_state.df_orders = df_clean
 
 if st.button('Optimize All Orders'):
-    # parse orders and compute allocations (code omitted for brevity)
-    # assume order_details and sum_all are computed prior
+    # Build orders list
+    df_in = st.session_state.df_orders.copy()
+    df_in = df_in[df_in['Order'].astype(str).str.strip() != '']
+    orders = []
+    for _, row in df_in.iterrows():
+        o_no = str(row['Order']).strip()
+        runs = []
+        for c in cols[1:]:
+            val = row[c]
+            if val in ('', None): continue
+            try: runs.append(float(val))
+            except ValueError:
+                st.error(f"Invalid run value '{val}' in order {o_no}")
+                st.stop()
+        orders.append({'order': o_no, 'runs': runs})
+
+    # Per-order allocations
+    order_details = []
+    for o in orders:
+        alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
+        order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
+
+    # ZIP export
     buf = io.BytesIO(); folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     excel_dir = f"{folder}/Excel"; pdf_dir = f"{folder}/PDF"
     with zipfile.ZipFile(buf, 'w') as zf:
-        # Excel export
         for od in order_details:
             order = od['order']; df_o = pd.DataFrame(od['alloc'])
+            # Excel
             excel_buffer = io.BytesIO()
             with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
                 df_o.to_excel(writer, index=False, sheet_name='Allocations')
                 writer.save()
             excel_buffer.seek(0)
             zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
-        # PDF export or placeholder
-        if pdf_enabled:
-            for od in order_details:
-                order = od['order']; df_o = pd.DataFrame(od['alloc'])
+            # PDF or placeholder
+            if pdf_enabled:
                 pdf = FPDF(); pdf.add_page(); pdf.set_font('Arial', size=12)
                 # header
                 for col in df_o.columns:
@@ -116,9 +135,10 @@ if st.button('Optimize All Orders'):
                     pdf.ln()
                 pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
                 zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
-        else:
-            zf.writestr(f"{pdf_dir}/README.txt", 'Install the `fpdf` library to enable PDF export.')
+            else:
+                zf.writestr(f"{pdf_dir}/README.txt", 'Install the `fpdf` library to enable PDF export.')
     buf.seek(0)
     st.download_button('Export Data', data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
+
 st.markdown('---')
 st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
