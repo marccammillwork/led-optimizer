@@ -95,7 +95,6 @@ if st.button('Optimize All Orders'):
         runs = []
         for c in cols[1:]:
             raw = row[c]
-            # Normalize whitespace and empty values
             val_str = str(raw).strip()
             if val_str == '':
                 continue
@@ -106,7 +105,7 @@ if st.button('Optimize All Orders'):
                 st.stop()
             runs.append(num)
         orders.append({'order': o_no, 'runs': runs})
-
+    
     # Per-order allocations
     order_details = []
     for o in orders:
@@ -114,26 +113,32 @@ if st.button('Optimize All Orders'):
         order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
 
     # ZIP export
-    buf = io.BytesIO(); folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    excel_dir = f"{folder}/Excel"; pdf_dir = f"{folder}/PDF"
+    buf = io.BytesIO()
+    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    excel_dir = f"{folder}/Excel"
+    pdf_dir = f"{folder}/PDF"
     with zipfile.ZipFile(buf, 'w') as zf:
         for od in order_details:
-            order = od['order']; df_o = pd.DataFrame(od['alloc'])
-            # Excel
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                df_o.to_excel(writer, index=False, sheet_name='Allocations')
-                writer.save()
-            excel_buffer.seek(0)
-            zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
-            # PDF or placeholder
+            order = od['order']
+            df_o = pd.DataFrame(od['alloc'])
+            # Excel export (fallback to CSV if openpyxl missing)
+            try:
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    df_o.to_excel(writer, index=False, sheet_name='Allocations')
+                excel_buffer.seek(0)
+                zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
+            except Exception:
+                csv_buffer = io.StringIO()
+                df_o.to_csv(csv_buffer, index=False)
+                zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", csv_buffer.getvalue())
+
+            # PDF export or placeholder
             if pdf_enabled:
                 pdf = FPDF(); pdf.add_page(); pdf.set_font('Arial', size=12)
-                # header
                 for col in df_o.columns:
                     pdf.cell(40, 10, str(col), border=1)
                 pdf.ln()
-                # rows
                 for row in df_o.itertuples(index=False):
                     for cell in row:
                         pdf.cell(40, 10, str(cell), border=1)
@@ -146,4 +151,4 @@ if st.button('Optimize All Orders'):
     st.download_button('Export Data', data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
 
 st.markdown('---')
-st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
