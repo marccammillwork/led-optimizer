@@ -203,8 +203,8 @@ if st.button("Optimize All Orders"):
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr(f"{folder}/OverallRolls.csv", df_rolls.to_csv())
-        zf.writestr(f"{folder}/OverallPower.csv", df_power.to_csv(index=False))
+        zf.writestr(f"{folder}/OverallRolls.csv", df_led.to_csv())
+        zf.writestr(f"{folder}/OverallPower.csv", df_ps.to_csv(index=False))
         zf.writestr(f"{folder}/GlobalSummary.csv",
                     pd.DataFrame([sum_all]).to_csv(index=False))
         for od in order_details:
