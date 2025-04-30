@@ -146,8 +146,54 @@ if st.button("Optimize All Orders"):
     # Cutoffs expander
     scrap_list = [a['waste'] for a in alloc_all if a['waste']>0]
     df_cutoffs = pd.DataFrame({'Cutoff Number': range(1, len(scrap_list)+1), 'Length': scrap_list})
-    total_cut_len = df_cutoffs['Length'].sum()
-    total_row = pd.DataFrame([{'Cutoff Number': 'Total', 'Length': total_cut_len}])
-    df_cutoffs = pd.concat([df_cutoffs, total_row], ignore_index=True)
+    total_cut_len = sum(scrap_list)
+    df_cutoffs = df_cutoffs.append({'Cutoff Number': 'Total', 'Length': total_cut_len}, ignore_index=True)
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs, use_container_width=True)
+
+    # Overall Summary
+    st.header("Overall Summary")
+    st.subheader("Order-level Summary")
+    total_orders = len(order_details)
+    totals = [od['sum']['led_cost'] + compute_power(od['alloc'])[1] for od in order_details]
+    st.write(f"- Total Orders: {total_orders}")
+    st.write(f"- Average Cost: ${ (sum(totals)/total_orders) if total_orders else 0:.2f}")
+    min_o, max_o = min(order_details, key=lambda od: od['sum']['led_cost']+compute_power(od['alloc'])[1]), max(order_details, key=lambda od: od['sum']['led_cost']+compute_power(od['alloc'])[1])
+    st.write(f"- Min Order: {min_o['order']} (${min_o['sum']['led_cost']+compute_power(min_o['alloc'])[1]:.2f})")
+    st.write(f"- Max Order: {max_o['order']} (${max_o['sum']['led_cost']+compute_power(max_o['alloc'])[1]:.2f})")
+    st.markdown("---")
+
+    # LEDS table
+    st.subheader("LEDS")
+    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
+    df_rolls = pd.DataFrame({'Count': rolls, 'Cost': [rolls[L]*strip_options[L] for L in rolls.index]})
+    df_rolls['Cost'] = df_rolls['Cost'].apply(lambda x: f"${x:.2f}")
+    df_rolls['Count'] = df_rolls['Count'].replace(0,"")
+    st.dataframe(df_rolls, use_container_width=True)
+    st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
+    st.write(f"**Total Cutoffs (in):** {sum_all['waste']:.2f}")
+    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
+    st.write(f"**Dollars Saved from Reuse:** ${dollars_saved:.2f}")
+
+    # Power summary
+    df_power = pd.DataFrame([(W, ps_counts.get(W,0), ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W)) for W in sorted(ps_counts)], columns=['Wattage','Count','Total Cost'])
+    df_power['Total Cost'] = df_power['Total Cost'].apply(lambda x: f"${x:.2f}")
+    df_power['Count'] = df_power['Count'].replace(0,"")
+    st.dataframe(df_power.drop(columns=['Wattage']), use_container_width=True, hide_index=True)
+    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
+
+    # Export to Excel
+    buf = io.BytesIO()
+    filename = f"LED_OPT_{datetime.now().strftime('%m%d%y')}.xlsx"
+    with pd.ExcelWriter(buf, engine='xlsxwriter') as writer:
+        df_rolls.to_excel(writer, sheet_name='LEDS', index=False)
+        df_power.to_excel(writer, sheet_name='Power', index=False)
+        pd.DataFrame([sum_all]).to_excel(writer, sheet_name='Global Summary', index=False)
+        orders_df = pd.concat([pd.DataFrame(od['alloc']).assign(Order=od['order']) for od in order_details], ignore_index=True)
+        orders_df.to_excel(writer, sheet_name='Orders', index=False)
+        df_cutoffs.to_excel(writer, sheet_name='Cutoffs', index=False)
+    buf.seek(0)
+    st.download_button('Export Data', data=buf.getvalue(), file_name=filename, mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+st.markdown("---")
+st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
