@@ -4,7 +4,7 @@ import io
 import zipfile
 from datetime import datetime
 
-# Attempt PDF support via fpdf
+# Optional PDF support
 try:
     from fpdf import FPDF
     pdf_enabled = True
@@ -72,7 +72,14 @@ def compute_power(allocations):
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
         bins.append({'W': spec['W'], 'cost': spec['cost'], 'remaining': spec['W'] - load, 'slots': 9, 'loads': [load]})
-    df = pd.DataFrame([{'Supply #': i+1, 'Wattage': b['W'], 'Cost': b['cost'], 'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']), 'Remaining (W)': round(b['remaining'], 1)} for i, b in enumerate(bins)])
+    df = pd.DataFrame([
+        {'Supply #': i+1,
+         'Wattage': b['W'],
+         'Cost': b['cost'],
+         'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']),
+         'Remaining (W)': round(b['remaining'], 1)}
+        for i, b in enumerate(bins)
+    ])
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- UI: Batch Orders ---
@@ -86,7 +93,7 @@ df_clean = df_edited.replace({None: '', 'None': ''}).fillna('')
 st.session_state.df_orders = df_clean
 
 if st.button('Optimize All Orders'):
-    # Build orders list
+    # Parse orders
     df_in = st.session_state.df_orders.copy()
     df_in = df_in[df_in['Order'].astype(str).str.strip() != '']
     orders = []
@@ -94,61 +101,107 @@ if st.button('Optimize All Orders'):
         o_no = str(row['Order']).strip()
         runs = []
         for c in cols[1:]:
-            raw = row[c]
-            val_str = str(raw).strip()
-            if val_str == '':
-                continue
+            val = str(row[c]).strip()
+            if not val: continue
             try:
-                num = float(val_str)
+                runs.append(float(val))
             except ValueError:
-                st.error(f"Invalid run value '{raw}' (interpreted as '{val_str}') in order {o_no}")
+                st.error(f"Invalid run value '{row[c]}' in order {o_no}")
                 st.stop()
-            runs.append(num)
         orders.append({'order': o_no, 'runs': runs})
     
-    # Per-order allocations
+    # Global optimization
+    global_runs = [r for o in orders for r in o['runs']]
+    alloc_all, sum_all = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
+    df_led = pd.DataFrame(alloc_all)
+    df_ps, ps_cost, ps_counts = compute_power(alloc_all)
+
+    # Per-order details
     order_details = []
     for o in orders:
         alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
         order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
 
-    # ZIP export
-    buf = io.BytesIO()
-    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    excel_dir = f"{folder}/Excel"
-    pdf_dir = f"{folder}/PDF"
-    with zipfile.ZipFile(buf, 'w') as zf:
-        for od in order_details:
-            order = od['order']
-            df_o = pd.DataFrame(od['alloc'])
-            # Excel export (fallback to CSV if openpyxl missing)
-            try:
-                excel_buffer = io.BytesIO()
-                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    df_o.to_excel(writer, index=False, sheet_name='Allocations')
-                excel_buffer.seek(0)
-                zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
-            except Exception:
-                csv_buffer = io.StringIO()
-                df_o.to_csv(csv_buffer, index=False)
-                zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", csv_buffer.getvalue())
+    # Order-level stats
+    total_orders = len(order_details)
+    order_costs = []
+    for od in order_details:
+        led_cost = sum(a['cost'] for a in od['alloc'])
+        _, supply_cost, _ = compute_power(od['alloc'])
+        order_costs.append((od['order'], led_cost + supply_cost))
+    avg_cost = sum(c for _,c in order_costs)/total_orders if total_orders else 0
+    min_order, min_cost = min(order_costs, key=lambda x: x[1]) if order_costs else ('N/A',0)
+    max_order, max_cost = max(order_costs, key=lambda x: x[1]) if order_costs else ('N/A',0)
 
-            # PDF export or placeholder
+    # Display summaries
+    st.markdown('**Order-level Summary**')
+    st.write(f'- Total Orders: {total_orders}')
+    st.write(f'- Average Cost per Order: ${avg_cost:.2f}')
+    st.write(f'- Min Order Cost: ${min_cost:.2f} (Order {min_order})')
+    st.write(f'- Max Order Cost: ${max_cost:.2f} (Order {max_order})')
+    st.markdown('---')
+
+    st.header('Overall Summary')
+    st.subheader('LED Rolls')
+    rolls = df_led['strip_length'].value_counts().reindex([59,118,236], fill_value=0)
+    costs = {L: rolls[L]*strip_options[L] for L in rolls.index}
+    df_rolls = pd.DataFrame({'Count':rolls, 'Cost':pd.Series(costs)})
+    df_rolls['Cost'] = df_rolls['Cost'].apply(lambda x:f'${x:.2f}')
+    st.dataframe(df_rolls, use_container_width=True)
+    st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
+
+    st.subheader('Power Supplies')
+    df_power = pd.DataFrame([
+        (W, ps_counts.get(W,0), ps_counts.get(W,0)*next(s['cost'] for s in power_specs if s['W']==W))
+        for W in sorted(ps_counts)
+    ], columns=['Wattage','Count','Total Cost'])
+    df_power['Total Cost'] = df_power['Total Cost'].apply(lambda x:f'${x:.2f}')
+    st.dataframe(df_power, use_container_width=True)
+    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
+    st.write(f"**Total Waste (in):** {sum_all['waste']:.2f}")
+
+    # Order Details
+    st.header('Order Details')
+    for od in order_details:
+        with st.expander(f"Order {od['order']}"):
+            df_o = pd.DataFrame(od['alloc'])
+            df_o['cost'] = df_o['cost'].apply(lambda x:f'${x:.2f}')
+            st.dataframe(df_o, use_container_width=True)
+            ps_o, cost_o, _ = compute_power(od['alloc'])
+            ps_o['Cost'] = ps_o['Cost'].apply(lambda x:f'${x:.2f}')
+            st.write(f"**Supply Cost:** ${cost_o:.2f}")
+
+    # Cutoffs
+    scrap = [a['waste'] for a in alloc_all if a['waste']>0]
+    df_cut = pd.DataFrame({'Cutoff #':range(1,len(scrap)+1),'Length':scrap})
+    df_cut.loc[len(df_cut)] = ['Total', sum(scrap)]
+    with st.expander('Cutoffs'):
+        st.dataframe(df_cut, use_container_width=True)
+
+    # Export ZIP
+    buf = io.BytesIO(); folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    excel_dir, pdf_dir = f"{folder}/Excel", f"{folder}/PDF"
+    with zipfile.ZipFile(buf,'w') as zf:
+        for od in order_details:
+            order, alloc = od['order'], od['alloc']
+            df_o = pd.DataFrame(alloc)
+            # Excel
+            csv_buf = io.StringIO(); df_o.to_csv(csv_buf,index=False)
+            zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv",csv_buf.getvalue())
+            # PDF
             if pdf_enabled:
                 pdf = FPDF(); pdf.add_page(); pdf.set_font('Arial', size=12)
-                for col in df_o.columns:
-                    pdf.cell(40, 10, str(col), border=1)
+                for col in df_o.columns: pdf.cell(40,10,str(col),border=1)
                 pdf.ln()
                 for row in df_o.itertuples(index=False):
-                    for cell in row:
-                        pdf.cell(40, 10, str(cell), border=1)
+                    for cell in row: pdf.cell(40,10,str(cell),border=1)
                     pdf.ln()
-                pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
-                zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
+                pdf_buf=io.BytesIO(pdf.output(dest='S').encode('latin1'))
+                zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf",pdf_buf.read())
             else:
-                zf.writestr(f"{pdf_dir}/README.txt", 'Install the `fpdf` library to enable PDF export.')
+                zf.writestr(f"{pdf_dir}/README.txt",'Install fpdf to enable PDFs')
     buf.seek(0)
-    st.download_button('Export Data', data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
+    st.download_button('Export Data',data=buf.getvalue(),file_name=f"{folder}.zip",mime='application/zip')
 
 st.markdown('---')
 st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
