@@ -54,7 +54,7 @@ def optimized_allocation(runs, opts, max_connections):
 
 @st.cache_data
 def compute_power(allocations):
-    segment_watts = [(l/12)*3 for a in allocations for l in a['used']]
+    segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
     for load in sorted(segment_watts, reverse=True):
         placed = False
