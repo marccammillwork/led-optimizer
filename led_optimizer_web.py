@@ -135,11 +135,8 @@ with config:
                 "W": st.column_config.NumberColumn("Supply Wattage", width="small"),
                 "cost": st.column_config.NumberColumn("Cost per supply", width="small")
             }
-        ),
-                "cost": st.column_config.NumberColumn("Cost per supply")
-            }
         )
-        apply = st.form_submit_button("Apply Settings")
+        apply = st.form_submit_button("Apply Settings")("Apply Settings")
         if apply:
             # Save updated settings
             st.session_state["watt_per_foot"] = wp
