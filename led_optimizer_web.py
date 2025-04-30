@@ -10,7 +10,7 @@ power_specs = [
     {'W': 24, 'cost': 50.41},
     {'W': 36, 'cost': 26.16},
     {'W': 60, 'cost': 82.72},
-    {'W': 96, 'cost': 98.85},
+    {'W': 96, 'cost': 93.91},
 ]
 power_specs.sort(key=lambda s: s['cost']/s['W'])
 
