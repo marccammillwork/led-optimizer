@@ -219,6 +219,42 @@ if st.button("Optimize All Orders"):
                     pdf.cell(40, 8, str(cell), border=1)
                 pdf.ln()
             # Summary
+                  # -------- Batch PDF containing ALL orders --------
+        combined = FPDF()
+        combined.set_auto_page_break(auto=True, margin=15)
+
+        for idx, od in enumerate(order_details):
+            # Start a new page every 3 orders (change to 5 if you prefer)
+            if idx % 3 == 0:
+                combined.add_page()
+                combined.set_font('Arial', 'B', 14)
+                combined.cell(0, 10, "Batch Order Report", ln=1)
+
+            combined.set_font('Arial', 'B', 12)
+            combined.cell(0, 8, f"Order {od['order']}", ln=1)
+
+            # Allocation table
+            df_o = pd.DataFrame(od['alloc'])
+            combined.set_font('Arial', '', 10)
+
+            # Header row
+            for col in df_o.columns:
+                combined.cell(40, 8, str(col), border=1)
+            combined.ln()
+
+            # Data rows
+            for row in df_o.itertuples(index=False):
+                for cell in row:
+                    combined.cell(40, 8, str(cell), border=1)
+                combined.ln()
+
+            combined.ln(4)  # small space before next order
+
+        # Write the batch PDF into the ZIP
+        batch_buf = io.BytesIO(combined.output(dest='S').encode('latin1'))
+        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", batch_buf.read())
+        # ---------------------------------------------------
+
             pdf.ln(4)
             pdf.cell(0, 8, f"Total LED Cost: ${summ['led_cost']:.2f}", ln=1)
             pdf.cell(0, 8, f"Total Supply Cost: ${compute_power(od['alloc'])[1]:.2f}", ln=1)
