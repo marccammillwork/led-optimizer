@@ -187,6 +187,33 @@ if st.button("Optimize All Orders"):
             pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
             pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
+        # Batch PDF report for all orders
+        batch_pdf = FPDF()
+        batch_pdf.set_auto_page_break(auto=True, margin=15)
+        for idx, od in enumerate(order_details):
+            # Start new page every 3 orders
+            if idx % 3 == 0:
+                batch_pdf.add_page()
+                batch_pdf.set_font("Arial", "B", 14)
+                batch_pdf.cell(0, 10, "Batch Order Report", ln=1)
+            # Order header
+            batch_pdf.set_font("Arial", "B", 12)
+            batch_pdf.cell(0, 8, f"Order {od['order']}", ln=1)
+            # Table
+            df_batch = pd.DataFrame(od['alloc'])
+            batch_pdf.set_font("Arial", "", 10)
+            # Header row
+            for col in df_batch.columns:
+                batch_pdf.cell(40, 8, str(col), border=1)
+            batch_pdf.ln()
+            # Data rows
+            for row in df_batch.itertuples(index=False):
+                for cell in row:
+                    batch_pdf.cell(40, 8, str(cell), border=1)
+                batch_pdf.ln()
+            batch_pdf.ln(4)
+        batch_buf = io.BytesIO(batch_pdf.output(dest="S").encode("latin1"))
+        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", batch_buf.read())
     buf.seek(0)
     st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
 
