@@ -218,7 +218,7 @@ if st.button("Optimize All Orders"):
                 batch_pdf.cell(45, 8, col, border=1)
             batch_pdf.ln()
             # Order data rows
-            df_batch = pd.DataFrame(od['alloc'])(od['alloc'])
+            df_batch = pd.DataFrame(od['alloc'])
             batch_pdf.set_font("Arial", "", 10)
             for row in df_batch.itertuples(index=False):
                 for cell in row:
