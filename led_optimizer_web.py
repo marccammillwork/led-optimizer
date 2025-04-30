@@ -3,6 +3,8 @@ import pandas as pd
 import io
 import zipfile
 from datetime import datetime
+# PDF export support
+from fpdf import FPDF
 
 # --- Data and Logic ---
 strip_options = {59: 43.26, 118: 74.63, 236: 139.06}
@@ -252,24 +254,43 @@ if st.button("Optimize All Orders"):
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs_disp, use_container_width=True)
 
-    # Export ZIP of CSVs
-    buf = io.BytesIO()
-    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr(f"{folder}/OverallRolls.csv", df_rolls.to_csv())
-        zf.writestr(f"{folder}/OverallPower.csv", df_power.to_csv(index=False))
-        zf.writestr(f"{folder}/GlobalSummary.csv",
-                    pd.DataFrame([sum_all]).to_csv(index=False))
-        for od in order_details:
-            zf.writestr(f"{folder}/{od['order']}_alloc.csv",
-                        pd.DataFrame(od["alloc"]).to_csv(index=False))
-            zf.writestr(f"{folder}/{od['order']}_summary.csv",
-                        pd.DataFrame([od["sum"]]).to_csv(index=False))
-        zf.writestr(f"{folder}/Cutoffs.csv", df_cutoffs.to_csv(index=False))
-    buf.seek(0)
-    st.download_button(
-        "Export Data",
-        data=buf.getvalue(),
+    # Export ZIP with Excel and PDF folders
+buf = io.BytesIO()
+folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+excel_dir = f"{folder}/Excel"
+pdf_dir = f"{folder}/PDF"
+with zipfile.ZipFile(buf, "w") as zf:
+    for od in order_details:
+        order = od['order']
+        df_o = pd.DataFrame(od['alloc'])
+        # Excel export
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df_o.to_excel(writer, index=False, sheet_name='Allocations')
+        excel_buffer.seek(0)
+        zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
+        # PDF export
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Arial', size=12)
+        # Header row
+        for col in df_o.columns:
+            pdf.cell(40, 10, str(col), border=1)
+        pdf.ln()
+        # Data rows
+        for row in df_o.itertuples(index=False):
+            for cell in row:
+                pdf.cell(40, 10, str(cell), border=1)
+            pdf.ln()
+        pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
+        zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
+buf.seek(0)
+st.download_button(
+    "Export Data",
+    data=buf.getvalue(),
+    file_name=f"{folder}.zip",
+    mime="application/zip"
+),
         file_name=f"{folder}.zip",
         mime="application/zip"
     )
