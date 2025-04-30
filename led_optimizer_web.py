@@ -270,8 +270,8 @@ if st.button("Optimize All Orders"):
             zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
             zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
 
-            # Excel export (CSV format)
-            zf.writestr(f"{excel_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
+            # Excel export (CSV format for compatibility)
+            zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", df_o.to_csv(index=False))
 
             # PDF export
             pdf = FPDF()
@@ -295,7 +295,7 @@ if st.button("Optimize All Orders"):
             pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
     buf.seek(0)
-    st.download_button(
+    st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")(
         "Export Data",
         data=buf.getvalue(),
         file_name=f"{folder}.zip",
