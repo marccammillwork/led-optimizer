@@ -175,11 +175,11 @@ if st.button("Optimize All Orders"):
             for col in df_o.columns:
                 pdf.cell(40, 8, str(col), border=1)
             pdf.ln()
-            for row in df_o.itertuples(index=False):
+                        for row in df_o.itertuples(index=False):
                 for cell in row:
                     pdf.cell(40, 8, str(cell), border=1)
                 pdf.ln()
-                        pdf.ln(4)
+            pdf.ln(4)
             # Add summary rows as table entries
             summary_rows = [
                 ("Total LED Cost", f"${summ['led_cost']:.2f}"),
