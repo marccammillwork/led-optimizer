@@ -52,7 +52,8 @@ def optimized_allocation(runs, opts, max_connections):
     return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
 
 @st.cache_data
-def compute_power(allocations):
+def compute_power(allocations, watt_per_foot, power_specs) watt_per_foot, power_specs):
+    # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
     for load in sorted(segment_watts, reverse=True):
@@ -69,9 +70,21 @@ def compute_power(allocations):
         spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
-        bins.append({'W': spec['W'], 'cost': spec['cost'], 'remaining': spec['W'] - load, 'slots': 9, 'loads': [load]})
+        bins.append({
+            'W': spec['W'],
+            'cost': spec['cost'],
+            'remaining': spec['W'] - load,
+            'slots': 9,
+            'loads': [load]
+        })
     df = pd.DataFrame([
-        {'Supply #': i+1, 'Wattage': b['W'], 'Cost': b['cost'], 'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']), 'Remaining (W)': round(b['remaining'], 1)}
+        {
+            'Supply #': i+1,
+            'Wattage': b['W'],
+            'Cost': b['cost'],
+            'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']),
+            'Remaining (W)': round(b['remaining'], 1)
+        }
         for i, b in enumerate(bins)
     ])
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
@@ -142,7 +155,7 @@ if st.button("Optimize All Orders"):
     global_runs = [r for o in orders for r in o['runs']]
     alloc_all, sum_all = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
     df_led = pd.DataFrame(alloc_all)
-    df_ps, ps_cost, ps_counts = compute_power(alloc_all)
+    df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
     # Per-order details
     order_details = []
@@ -159,7 +172,7 @@ if st.button("Optimize All Orders"):
     order_costs = []
     for od in order_details:
         led_cost = sum(item['cost'] for item in od['alloc'])
-        _, supply_cost, _ = compute_power(od['alloc'])
+        _, supply_cost, _ = compute_power(od['alloc'], watt_per_foot, power_specs)
         order_costs.append((od['order'], led_cost + supply_cost))
     if total_orders:
         avg_cost = sum(c for _, c in order_costs) / total_orders
@@ -183,7 +196,7 @@ if st.button("Optimize All Orders"):
             df_o_disp['cost'] = df_o_disp['cost'].apply(lambda x: f"${x:.2f}")
             st.subheader("Allocations")
             st.dataframe(df_o_disp, use_container_width=True)
-            ps_o, cost_o, _ = compute_power(od['alloc'])
+            ps_o, cost_o, _ = compute_power(od['alloc'], watt_per_foot, power_specs)
             ps_o['Cost'] = ps_o['Cost'].apply(lambda x: f"${x:.2f}")
             ps_o['Remaining (W)'] = ps_o['Remaining (W)'].apply(lambda x: f"{x:.1f}W")
             st.subheader("Power Supplies")
@@ -221,7 +234,7 @@ if st.button("Optimize All Orders"):
                     pdf.cell(45, 8, str(cell), border=1)
                 pdf.ln()
             # Summary rows
-            total_supply = compute_power(od['alloc'])[1]
+            total_supply = compute_power(od['alloc'], watt_per_foot, power_specs)[1]
             total_combined = summ['led_cost'] + total_supply
             summary_rows = [
                 ("Total LED Cost", f"${summ['led_cost']:.2f}"),
@@ -261,7 +274,7 @@ if st.button("Optimize All Orders"):
                     batch_pdf.cell(45, 8, str(cell), border=1)
                 batch_pdf.ln()
             # Batch summary rows
-            total_supply = compute_power(od['alloc'])[1]
+            total_supply = compute_power(od['alloc'], watt_per_foot, power_specs)[1]
             total_combined = od['sum']['led_cost'] + total_supply
             summary_rows = [
                 ("Total LED Cost", f"${od['sum']['led_cost']:.2f}"),
