@@ -3,8 +3,13 @@ import pandas as pd
 import io
 import zipfile
 from datetime import datetime
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
+
+# Attempt PDF support via fpdf
+try:
+    from fpdf import FPDF
+    pdf_enabled = True
+except ImportError:
+    pdf_enabled = False
 
 # --- Data and Logic ---
 strip_options = {59: 43.26, 118: 74.63, 236: 139.06}
@@ -34,14 +39,8 @@ def optimized_allocation(runs, opts, max_connections):
                         best_pair = (r1, r2)
                         best_strip = length
         if best_pair:
-            allocations.append({
-                'strip_length': best_strip,
-                'used': best_pair,
-                'waste': best_strip - sum(best_pair),
-                'cost': opts[best_strip]
-            })
-            runs_left.remove(best_pair[0])
-            runs_left.remove(best_pair[1])
+            allocations.append({'strip_length': best_strip, 'used': best_pair, 'waste': best_strip - sum(best_pair), 'cost': opts[best_strip]})
+            runs_left.remove(best_pair[0]); runs_left.remove(best_pair[1])
         else:
             r = max(runs_left)
             candidates = [(L, C) for L, C in opts.items() if L >= r]
@@ -49,12 +48,7 @@ def optimized_allocation(runs, opts, max_connections):
                 length, cost = min(candidates, key=lambda x: x[1])
             else:
                 length, cost = max(opts.items(), key=lambda x: x[0])
-            allocations.append({
-                'strip_length': length,
-                'used': (r,),
-                'waste': length - r,
-                'cost': cost
-            })
+            allocations.append({'strip_length': length, 'used': (r,), 'waste': length - r, 'cost': cost})
             runs_left.remove(r)
         if sum(len(a['used']) for a in allocations) > max_connections:
             break
@@ -71,27 +65,15 @@ def compute_power(allocations):
         placed = False
         for b in bins:
             if b['slots'] > 0 and b['remaining'] >= load:
-                b['remaining'] -= load
-                b['slots'] -= 1
-                b['loads'].append(load)
-                placed = True
-                break
+                b['remaining'] -= load; b['slots'] -= 1; b['loads'].append(load); placed = True; break
         if placed:
             continue
         spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
         bins.append({'W': spec['W'], 'cost': spec['cost'], 'remaining': spec['W'] - load, 'slots': 9, 'loads': [load]})
-    df = pd.DataFrame([{
-        'Supply #': i+1,
-        'Wattage': b['W'],
-        'Cost': b['cost'],
-        'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']),
-        'Remaining (W)': round(b['remaining'], 1)
-    } for i, b in enumerate(bins)])
-    total_cost = df['Cost'].sum()
-    counts = df['Wattage'].value_counts().to_dict()
-    return df, total_cost, counts
+    df = pd.DataFrame([{'Supply #': i+1, 'Wattage': b['W'], 'Cost': b['cost'], 'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']), 'Remaining (W)': round(b['remaining'], 1)} for i, b in enumerate(bins)])
+    return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- UI: Batch Orders ---
 st.title('LED Strip & Power Supply Optimizer (Batch)')
@@ -104,43 +86,39 @@ df_clean = df_edited.replace({None: '', 'None': ''}).fillna('')
 st.session_state.df_orders = df_clean
 
 if st.button('Optimize All Orders'):
-    # parsing and optimization logic unchanged...
+    # parse orders and compute allocations (code omitted for brevity)
     # assume order_details and sum_all are computed prior
-
-    buf = io.BytesIO()
-    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    excel_dir = f"{folder}/Excel"
-    pdf_dir = f"{folder}/PDF"
+    buf = io.BytesIO(); folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    excel_dir = f"{folder}/Excel"; pdf_dir = f"{folder}/PDF"
     with zipfile.ZipFile(buf, 'w') as zf:
+        # Excel export
         for od in order_details:
-            order = od['order']
-            df_o = pd.DataFrame(od['alloc'])
-
-            # Excel
+            order = od['order']; df_o = pd.DataFrame(od['alloc'])
             excel_buffer = io.BytesIO()
             with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
                 df_o.to_excel(writer, index=False, sheet_name='Allocations')
                 writer.save()
             excel_buffer.seek(0)
             zf.writestr(f"{excel_dir}/{order}_LED_OPT.xlsx", excel_buffer.read())
-
-            # PDF via matplotlib
-            pdf_buffer = io.BytesIO()
-            with PdfPages(pdf_buffer) as pdf:
-                fig, ax = plt.subplots(figsize=(8.5, 11))
-                ax.axis('off')
-                table_data = [df_o.columns.tolist()] + df_o.values.tolist()
-                tbl = ax.table(cellText=table_data, loc='center', cellLoc='center')
-                tbl.auto_set_font_size(False)
-                tbl.set_fontsize(10)
-                fig.tight_layout()
-                pdf.savefig(fig)
-                plt.close(fig)
-            pdf_buffer.seek(0)
-            zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
-
+        # PDF export or placeholder
+        if pdf_enabled:
+            for od in order_details:
+                order = od['order']; df_o = pd.DataFrame(od['alloc'])
+                pdf = FPDF(); pdf.add_page(); pdf.set_font('Arial', size=12)
+                # header
+                for col in df_o.columns:
+                    pdf.cell(40, 10, str(col), border=1)
+                pdf.ln()
+                # rows
+                for row in df_o.itertuples(index=False):
+                    for cell in row:
+                        pdf.cell(40, 10, str(cell), border=1)
+                    pdf.ln()
+                pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
+                zf.writestr(f"{pdf_dir}/{order}_LED_OPT.pdf", pdf_buffer.read())
+        else:
+            zf.writestr(f"{pdf_dir}/README.txt", 'Install the `fpdf` library to enable PDF export.')
     buf.seek(0)
     st.download_button('Export Data', data=buf.getvalue(), file_name=f"{folder}.zip", mime='application/zip')
-
 st.markdown('---')
 st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
