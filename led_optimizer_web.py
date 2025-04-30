@@ -78,7 +78,7 @@ def compute_power(allocations):
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- UI: Batch Orders ---
-st.title("LED Strip & Power Supply Optimizer (")
+st.title("LED Strip & Power Supply Optimizer")
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 if "df_orders" not in st.session_state:
     st.session_state.df_orders = pd.DataFrame([["" for _ in cols] for _ in range(5)], columns=cols)
