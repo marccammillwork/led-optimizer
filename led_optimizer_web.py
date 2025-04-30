@@ -302,5 +302,5 @@ if st.button("Optimize All Orders"):
         mime="application/zip"
     )
 
-st.markdown("---")("---")
-st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
+st.markdown("---")
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")"*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
