@@ -112,7 +112,7 @@ st.title("LED Strip & Power Supply Optimizer (Batch)")
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 if "df_orders" not in st.session_state:
     st.session_state.df_orders = pd.DataFrame(
-        [[""] * len(cols) for _ in range(5)], columns=cols
+        [["" for _ in cols] for _ in range(5)], columns=cols
     )
 
 st.subheader("Enter Orders and Runs (Tab to navigate, paste rows)")
@@ -163,59 +163,6 @@ if st.button("Optimize All Orders"):
         total_unit_waste += summ["waste"]
         order_details.append({"order": o["order"], "alloc": alloc, "sum": summ})
     waste_used = total_unit_waste - sum_all["waste"]
-
-    # Order-level statistics
-    total_orders = len(order_details)
-    order_costs = []
-    for od in order_details:
-        led_cost = sum(item['cost'] for item in od['alloc'])
-        _, supply_cost, _ = compute_power(od['alloc'])
-        order_costs.append((od['order'], led_cost + supply_cost))
-    if total_orders:
-        avg_cost = sum(t for _, t in order_costs) / total_orders
-        min_order, min_cost = min(order_costs, key=lambda x: x[1])
-        max_order, max_cost = max(order_costs, key=lambda x: x[1])
-    else:
-        avg_cost, min_order, min_cost, max_order, max_cost = 0.0, "N/A", 0.0, "N/A", 0.0
-
-    st.markdown("**Order-level Summary**")
-    st.write(f"- **Total Orders:** {total_orders}")
-    st.write(f"- **Average Cost per Order:** ${avg_cost:.2f}")
-    st.write(f"- **Minimum Order Cost:** ${min_cost:.2f} (Order {min_order})")
-    st.write(f"- **Maximum Order Cost:** ${max_cost:.2f} (Order {max_order})")
-    st.markdown("---")
-
-    # Overall Summary
-    st.header("Overall Summary")
-    st.subheader("LEDS")
-    rolls = df_led["strip_length"].value_counts().reindex([59,118,236], fill_value=0)
-    costs = {L: rolls[L] * strip_options[L] for L in rolls.index}
-    df_rolls = pd.DataFrame({"Count": rolls, "Cost": pd.Series(costs)})
-    df_rolls["Cost"] = df_rolls["Cost"].apply(lambda x: f"${x:.2f}")
-    df_rolls["Count"] = df_rolls["Count"].replace(0, "")
-    df_rolls["Cost"] = df_rolls["Cost"].replace("$0.00", "")
-    st.dataframe(df_rolls, use_container_width=True)
-
-    st.write(f"**Total LED Cost:** ${sum_all['led_cost']:.2f}")
-
-    # Power summary
-    df_power = pd.DataFrame(
-        [
-            (W,
-             ps_counts.get(W,0),
-             ps_counts.get(W,0) * next(s['cost'] for s in power_specs if s['W']==W))
-            for W in sorted(ps_counts)
-        ],
-        columns=["Wattage","Count","Total Cost"]
-    )
-    df_power["Total Cost"] = df_power["Total Cost"].apply(lambda x: f"${x:.2f}")
-    df_power["Count"] = df_power["Count"].replace(0,"")
-    df_power["Total Cost"] = df_power["Total Cost"].replace("$0.00","")
-    st.dataframe(df_power, use_container_width=True, hide_index=True)
-
-    st.write(f"**Total Supply Cost:** ${ps_cost:.2f}")
-    st.write(f"**Total Cutoffs (in):** {sum_all['waste']:.2f}")
-    st.write(f"**Inches Used from Cutoffs:** {waste_used:.2f}")
 
     # Order Details
     st.header("Order Details")
