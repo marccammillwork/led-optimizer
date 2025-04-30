@@ -77,6 +77,42 @@ def compute_power(allocations):
     ])
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
+# --- Configuration Settings ---
+st.sidebar.header("Configuration")
+# LED watt per foot (default 3 W/ft)
+watt_per_foot = st.sidebar.number_input(
+    "LED Watt per Foot", value=3.0, min_value=0.0, step=0.1
+)
+# LED strip lengths and costs
+strip_df = pd.DataFrame(
+    list(strip_options.items()),
+    columns=["Length (in)", "Cost"]
+)
+strip_df = st.sidebar.data_editor(
+    strip_df,
+    num_rows="dynamic",
+    key="strip_options_editor",
+    column_config={
+        "Length (in)": st.column_config.NumberColumn("Strip length in inches"),
+        "Cost": st.column_config.NumberColumn("Cost per strip")
+    }
+)
+strip_options = dict(zip(strip_df["Length (in)"], strip_df["Cost"]))
+
+# Power supply specifications
+power_df = pd.DataFrame(power_specs)
+power_df = st.sidebar.data_editor(
+    power_df,
+    num_rows="dynamic",
+    key="power_specs_editor",
+    column_config={
+        "W": st.column_config.NumberColumn("Supply Wattage"),
+        "cost": st.column_config.NumberColumn("Cost per supply")
+    }
+)
+power_specs = power_df.to_dict("records")
+power_specs.sort(key=lambda s: s['cost']/s['W'])
+
 # --- UI: Batch Orders ---
 st.title("LED Strip & Power Supply Optimizer")
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
