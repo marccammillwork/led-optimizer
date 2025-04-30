@@ -242,7 +242,7 @@ if st.button("Optimize All Orders"):
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
     
     buf.seek(0)
-    st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")"Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
+    st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip"))
 
 st.markdown("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
