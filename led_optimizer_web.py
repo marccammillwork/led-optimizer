@@ -254,7 +254,7 @@ if st.button("Optimize All Orders"):
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs_disp, use_container_width=True)
 
-                                # Export ZIP with CSV, Excel, and PDF
+                                    # Export ZIP with CSV, Excel, and PDF
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     csv_dir = f"{folder}/CSV"
@@ -262,16 +262,16 @@ if st.button("Optimize All Orders"):
     pdf_dir = f"{folder}/PDF"
     with zipfile.ZipFile(buf, "w") as zf:
         for od in order_details:
-            order = od['order']
-            df_o = pd.DataFrame(od['alloc'])
-            summ = od['sum']
+            order = od["order"]
+            df_o = pd.DataFrame(od["alloc"])
+            summ = od["sum"]
 
             # CSV export
             zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
             zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
 
             # Excel export (CSV format)
-            zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", df_o.to_csv(index=False))
+            zf.writestr(f"{excel_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
 
             # PDF export
             pdf = FPDF()
@@ -298,6 +298,9 @@ if st.button("Optimize All Orders"):
     st.download_button(
         "Export Data",
         data=buf.getvalue(),
+        file_name=f"{folder}.zip",
+        mime="application/zip"
+    ),
         file_name=f"{folder}.zip",
         mime="application/zip"
     )
