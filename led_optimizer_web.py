@@ -118,7 +118,10 @@ with config:
             use_container_width=True,
             key="form_strips",
             column_config={
-                "Length (in)": st.column_config.NumberColumn("Strip length in inches"),
+                "Length (in)": st.column_config.NumberColumn("Strip length in inches", width="small"),
+                "Cost": st.column_config.NumberColumn("Cost per strip", width="small")
+            }
+        )": st.column_config.NumberColumn("Strip length in inches"),
                 "Cost": st.column_config.NumberColumn("Cost per strip")
             }
         )
@@ -129,7 +132,10 @@ with config:
             use_container_width=True,
             key="form_power",
             column_config={
-                "W": st.column_config.NumberColumn("Supply Wattage"),
+                "W": st.column_config.NumberColumn("Supply Wattage", width="small"),
+                "cost": st.column_config.NumberColumn("Cost per supply", width="small")
+            }
+        ),
                 "cost": st.column_config.NumberColumn("Cost per supply")
             }
         )
