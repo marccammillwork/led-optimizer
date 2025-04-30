@@ -101,7 +101,8 @@ st.title("LED Strip & Power Supply Optimizer (Batch)")
 cols = ["Order"] + [f"Run{i+1}" for i in range(10)]
 
 if "df_orders" not in st.session_state:
-    st.session_state.df_orders = pd.DataFrame(["" for _ in cols], columns=cols)
+    # Initialize with 5 empty rows
+    st.session_state.df_orders = pd.DataFrame([["" for _ in cols] for _ in range(5)], columns=cols)
 
 st.subheader("Enter Orders and Runs (Tab to navigate, paste rows)")
 df_edited = st.data_editor(
