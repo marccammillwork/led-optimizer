@@ -237,7 +237,7 @@ if st.button("Optimize All Orders"):
             ps_o_disp["Remaining (W)"] = ps_o_disp["Remaining (W)"].apply(lambda x: f"{x:.1f}W")
             ps_o_disp = ps_o_disp.replace({"Count": {0:""}, "Loads (W)": {"":""}})
             st.dataframe(ps_o_disp, use_container_width=True)
-            st.write(f"**Power Supply Cost:** ${cost_o:.2f}")
+            st.write(f"**Supply Cost:** ${cost_o:.2f}")
 
         # Cutoffs expander
     scrap_list = [a["waste"] for a in alloc_all if a["waste"] > 0]
