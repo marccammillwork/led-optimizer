@@ -121,6 +121,9 @@ with config:
                 "Length (in)": st.column_config.NumberColumn("Strip length in inches", width="small"),
                 "Cost": st.column_config.NumberColumn("Cost per strip", width="small")
             }
+        ): st.column_config.NumberColumn("Strip length in inches", width="small"),
+                "Cost": st.column_config.NumberColumn("Cost per strip", width="small")
+            }
         )": st.column_config.NumberColumn("Strip length in inches"),
                 "Cost": st.column_config.NumberColumn("Cost per strip")
             }
