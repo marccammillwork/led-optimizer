@@ -254,7 +254,7 @@ if st.button("Optimize All Orders"):
     with st.expander("Cutoffs"):
         st.dataframe(df_cutoffs_disp, use_container_width=True)
 
-                            # Export ZIP with CSV, Excel, and PDF
+                                # Export ZIP with CSV, Excel, and PDF
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     csv_dir = f"{folder}/CSV"
@@ -294,7 +294,7 @@ if st.button("Optimize All Orders"):
             pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
             pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buf.read())
-        buf.seek(0)
+    buf.seek(0)
     st.download_button(
         "Export Data",
         data=buf.getvalue(),
@@ -303,4 +303,4 @@ if st.button("Optimize All Orders"):
     )
 
 st.markdown("---")
-st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")"*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
