@@ -190,7 +190,7 @@ if st.button("Optimize All Orders"):
             summary_rows = [
                 ("Total LED Cost", f"${summ['led_cost']:.2f}"),
                 ("Total Power Supply Cost", f"${total_supply:.2f}"),
-                ("Total LED + Power Supply Cost", f"${total_combined:.2f}"),
+                ("Total Lighting Cost", f"${total_combined:.2f}"),
                 ("Total Waste (in)", f"{summ['waste']:.2f}")
             ]
             for label, value in summary_rows:
@@ -225,8 +225,8 @@ if st.button("Optimize All Orders"):
             total_combined = od['sum']['led_cost'] + total_supply
             summary_rows = [
                 ("Total LED Cost", f"${od['sum']['led_cost']:.2f}"),
-                ("Total Supply Cost", f"${total_supply:.2f}"),
-                ("Total LED + Power Supply Cost", f"${total_combined:.2f}"),
+                ("Total Power Supply Cost", f"${total_supply:.2f}"),
+                ("Total Lighting Cost", f"${total_combined:.2f}"),
                 ("Total Waste (in)", f"{od['sum']['waste']:.2f}")
             ]
             for label, value in summary_rows:
