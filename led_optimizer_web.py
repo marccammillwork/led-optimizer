@@ -135,15 +135,17 @@ if st.button("Optimize All Orders"):
         o_no = str(row["Order"]).strip()
         runs = []
         for c in cols[1:]:
-            val = row[c]
-            if val in ("", None):
+            raw = row[c]
+            val_str = str(raw).strip()
+            if val_str == "":
                 continue
             try:
-                runs.append(float(val))
-            except:
-                st.error(f"Invalid run value '{val}' in order {o_no}")
+                runs.append(float(val_str))
+            except ValueError:
+                st.error(f"Invalid run value '{raw}' in order {o_no}")
                 st.stop()
         orders.append({"order": o_no, "runs": runs})
+    # Global optimization({"order": o_no, "runs": runs})
 
     # Global optimization
     global_runs = [r for o in orders for r in o["runs"]]
@@ -276,5 +278,4 @@ if st.button("Optimize All Orders"):
 
 st.markdown("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
-
 
