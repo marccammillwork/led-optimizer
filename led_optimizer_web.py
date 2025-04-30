@@ -191,7 +191,11 @@ if st.button("Optimize All Orders"):
         batch_pdf = FPDF()
         batch_pdf.set_auto_page_break(auto=True, margin=15)
         for idx, od in enumerate(order_details):
-            # Start new page every 3 orders
+            # Start new page every 5 orders  (change 5 to adjust per page)
+            if idx % 5 == 0:
+                batch_pdf.add_page()
+                batch_pdf.set_font("Arial", "B", 14)
+                batch_pdf.cell(0, 10, "Batch Order Report", ln=1)
             if idx % 3 == 0:
                 batch_pdf.add_page()
                 batch_pdf.set_font("Arial", "B", 14)
