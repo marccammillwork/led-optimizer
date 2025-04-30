@@ -301,8 +301,6 @@ if st.button("Optimize All Orders"):
         file_name=f"{folder}.zip",
         mime="application/zip"
     ),
-        file_name=f"{folder}.zip",
-        mime="application/zip"
     )
 
 st.markdown("---")
