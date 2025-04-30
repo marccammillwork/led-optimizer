@@ -165,10 +165,6 @@ if st.button("Optimize All Orders"):
             df_o = pd.DataFrame(od['alloc'])
             summ = od['sum']
 
-            # CSV
-            zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
-            zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
-
             # Excel (CSV format)
             zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", df_o.to_csv(index=False))
 
@@ -193,7 +189,7 @@ if st.button("Optimize All Orders"):
             total_combined = summ['led_cost'] + total_supply
             summary_rows = [
                 ("Total LED Cost", f"${summ['led_cost']:.2f}"),
-                ("Total Supply Cost", f"${total_supply:.2f}"),
+                ("Total Power Supply Cost", f"${total_supply:.2f}"),
                 ("Total LED + Power Supply Cost", f"${total_combined:.2f}"),
                 ("Total Waste (in)", f"{summ['waste']:.2f}")
             ]
