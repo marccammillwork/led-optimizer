@@ -300,19 +300,13 @@ if st.button("Optimize All Orders"):
             pdf.cell(0, 8, f"Total Waste: {summ['waste']:.2f} in", ln=1)
             pdf_buffer = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", pdf_buffer.read())
-    buf.seek(0)
-    st.download_button(
-        "Export Data",
-        data=buf.getvalue(),
-        file_name=f"{folder}.zip",
-        mime="application/zip"
-    ),
-        file_name=f"{folder}.zip",
-        mime="application/zip"
-    ),
-        file_name=f"{folder}.zip",
-        mime="application/zip"
-    )
+            buf.seek(0)
+        st.download_button(
+            "Export Data",
+            data=buf.getvalue(),
+            file_name=f"{folder}.zip",
+            mime="application/zip"
+        )
 
 st.markdown("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 20–25% headroom.*")
