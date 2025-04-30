@@ -1,4 +1,4 @@
-import streamlit as st
+vimport streamlit as st
 import pandas as pd
 import io
 import zipfile
@@ -271,6 +271,38 @@ if st.button("Optimize All Orders"):
             zf.writestr(f"{csv_dir}/{order}_alloc.csv", csv_data)
             summary_data = pd.DataFrame([summ]).to_csv(index=False)
             zf.writestr(f"{csv_dir}/{order}_summary.csv", summary_data)
+                 # --- Excel export ---
+         excel_buffer = io.BytesIO()
+         with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
+             df_o = pd.DataFrame(od["alloc"])
+             df_o.to_excel(writer, sheet_name="Allocations", index=False)
+             pd.DataFrame([od["sum"]]).to_excel(writer, sheet_name="Summary", index=False)
+         excel_buffer.seek(0)
+         zf.writestr(f"{excel_dir}/{od['order']}_LED_OPT.xlsx", excel_buffer.read())
+
+         # --- PDF export ---
+         pdf = FPDF()
+         pdf.add_page()
+         pdf.set_font('Arial', 'B', 12)
+         pdf.cell(0, 10, f"Order {od['order']} Report", ln=1)
+         pdf.set_font('Arial', '', 10)
+         df_o = pd.DataFrame(od["alloc"])
+         # header row
+         for col in df_o.columns:
+             pdf.cell(40, 8, str(col), border=1)
+         pdf.ln()
+         # data rows
+         for row in df_o.itertuples(index=False):
+             for cell in row:
+                 pdf.cell(40, 8, str(cell), border=1)
+             pdf.ln()
+         # summary
+         pdf.ln(4)
+         pdf.cell(0, 8, f"Total LED Cost: ${od['sum']['led_cost']:.2f}", ln=1)
+         pdf.cell(0, 8, f"Total Supply Cost: ${compute_power(od['alloc'])[1]:.2f}", ln=1)
+         pdf.cell(0, 8, f"Total Waste: {od['sum']['waste']:.2f} in", ln=1)
+         pdf_buf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
+         zf.writestr(f"{pdf_dir}/{od['order']}_report.pdf", pdf_buf.read())
 
             # Excel export
             excel_buffer = io.BytesIO()
