@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import io
 import zipfile
@@ -13,7 +14,7 @@ power_specs = [
 ]
 power_specs.sort(key=lambda s: s['cost']/s['W'])
 
-@st.cache_data
+@
 def optimized_allocation(runs, opts, max_connections):
     runs_left = runs.copy()
     allocations = []
