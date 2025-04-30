@@ -215,7 +215,7 @@ if st.button("Optimize All Orders"):
             batch_pdf.ln(4)
         # Write combined batch PDF
         batch_buf = io.BytesIO(batch_pdf.output(dest="S").encode("latin1"))
-        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", batch_buf.read()), batch_buf.read())
+        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", batch_buf.read())
     buf.seek(0)
     st.download_button("Export Data", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
 
