@@ -193,7 +193,17 @@ if st.button("Optimize All Orders"):
             if load * headroom_factor > max_capacity:
                 unsupported.append({'order': order_no, 'length': length, 'watts': load})
     if unsupported:
-        with st.expander(f"Unsupported runs: {len(unsupported)}"):
+        # Show unsupported runs in red
+    exp_label = f"Unsupported runs: {len(unsupported)}"
+    # HTML label for red text
+    expander_label = f"<span style='color:red'>{exp_label}</span>"
+    with st.expander(expander_label):
+        for u in unsupported:
+            # Display each unsupported run in red
+            st.markdown(
+                f"<span style='color:red'>- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)</span>",
+                unsafe_allow_html=True
+            )
             for u in unsupported:
                 st.write(f"- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)")
         st.error("Please adjust configuration or split runs to fit available power supplies.")
