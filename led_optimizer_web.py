@@ -53,6 +53,10 @@ def optimized_allocation(runs, opts, max_connections):
 def compute_power(allocations, watt_per_foot, power_specs):
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
+    # Identify the spec with maximum capacity (highest W)
+    max_capacity_spec = max(power_specs, key=lambda s: s['W'])
+    bins = []
+    for load in sorted(segment_watts, reverse=True): [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
     for load in sorted(segment_watts, reverse=True):
         # If load exceeds the largest spec, split across multiple supplies
@@ -71,7 +75,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
                 })
             continue
         # existing placement logic
-        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)((s for s in power_specs if s['W'] >= load*1.2), None)
+        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
         bins.append({
@@ -153,7 +157,7 @@ if "df_orders" not in st.session_state:
 
 st.subheader("Enter Orders and Runs")
 df_edited = st.data_editor(st.session_state.df_orders, num_rows="dynamic", use_container_width=True)
-st.session_state.df_orders = df_edited.replace({None: "", "None": ""}).fillna("")
+st.session_state.df_orders = df_edited.replace({None: "", "None": ""}).fillna("" )
 
 if st.button("Optimize All Orders"):
     # Parse orders
@@ -189,24 +193,9 @@ if st.button("Optimize All Orders"):
     df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
-    # Per-order details
-    order_details = []
-    total_unit_waste = 0
-    for o in orders:
-        alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
-        total_unit_waste += summ['waste']
-        order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
-    waste_used = total_unit_waste - sum_all['waste']
-
-    # Order-level Summary
-    st.markdown("**Batch level Summary**")
-    st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
-    st.markdown("---")
-
-    # --- UI: Order Results ---
     # Order-level Summary
     st.markdown("**Order-level Summary**")
-    total_orders = len(order_details)
+    total_orders = len(orders)
     st.write(f"- Total Orders: {total_orders}")
     st.write(f"- Total Unusable Cutoff Waste: {unusable_scrap:.2f} in")
     st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
