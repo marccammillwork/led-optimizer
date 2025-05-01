@@ -10,7 +10,7 @@ strip_options = {59: 43.26, 118: 74.63, 236: 139.06}
 power_specs = [
     {'W': 36, 'cost': 26.16},
     {'W': 60, 'cost': 82.72},
-    {'W': 96, 'cost': 43.04},
+    {'W': 96, 'cost': 93.91},
 ]
 power_specs.sort(key=lambda s: s['cost']/s['W'])
 
@@ -181,7 +181,7 @@ if st.button("Optimize All Orders"):
     # Determine cutoff usability
     unusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 2)
     reusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 1)
-    df_led = pd.DataFrame(alloc_all)(alloc_all)
+    df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
     # Per-order details
