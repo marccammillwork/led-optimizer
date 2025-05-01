@@ -190,7 +190,7 @@ if st.button("Optimize All Orders"):
         a['waste'] * (strip_options[a['strip_length']] / a['strip_length'])
         for a in alloc_all if len(a['used']) == 1
     )
-    df_led = pd.DataFrame(alloc_all)(alloc_all)
+    df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
     # Per-order details
