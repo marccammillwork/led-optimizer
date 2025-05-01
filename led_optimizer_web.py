@@ -51,44 +51,31 @@ def optimized_allocation(runs, opts, max_connections):
     return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
 
 def compute_power(allocations, watt_per_foot, power_specs):
-    # Power supply sizing with 15-20% headroom
+    import math
+    # Power supply sizing with ~15% headroom
     headroom_factor = 1.15
-    # Slot capacity per supply wattage
+    # Slot capacities
     slot_limits = {36: 10, 96: 30}
-    # Calculate segment watt loads using configurable watt_per_foot
+    # Calculate loads in watts
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
-    # Identify highest capacity supply
-    max_capacity_spec = max(power_specs, key=lambda s: s['W'])
+    # Determine highest-capacity supply
+    max_spec = max(power_specs, key=lambda s: s['W'])
     bins = []
     for load in sorted(segment_watts, reverse=True):
-        # If load exceeds headroom of highest-capacity supply, split across multiples
-        if load > max_capacity_spec['W']:
-            # Split loads that exceed single supply capacity
-            num_supplies = int(-(-load // max_capacity_spec['W']))  # ceil division
-            portion = load / num_supplies
-            for _ in range(num_supplies):
-                spec = max_capacity_spec
+        # If load exceeds nominal capacity, split across max-capacity supplies
+        if load > max_spec['W']:
+            num = math.ceil(load / max_spec['W'])
+            portion = load / num
+            for _ in range(num):
                 bins.append({
-                    'W': spec['W'],
-                    'cost': spec['cost'],
-                    'remaining': spec['W'] - portion,
-                    'slots': slot_limits.get(spec['W'], 0),
+                    'W': max_spec['W'],
+                    'cost': max_spec['cost'],
+                    'remaining': max_spec['W'] - portion,
+                    'slots': slot_limits.get(max_spec['W'], 0),
                     'loads': [portion]
                 })
             continue
-            num_supplies = int(-(-load // (max_capacity_spec['W'] * headroom_factor)))
-            portion = load / num_supplies
-            for _ in range(num_supplies):
-                spec = max_capacity_spec
-                bins.append({
-                    'W': spec['W'],
-                    'cost': spec['cost'],
-                    'remaining': spec['W'] - portion,
-                    'slots': slot_limits.get(spec['W'], 0),
-                    'loads': [portion]
-                })
-            continue
-        # Try placing in existing bins
+        # Try filling existing bins with headroom
         placed = False
         for b in bins:
             if b['slots'] > 0 and b['remaining'] >= load * headroom_factor:
@@ -99,12 +86,12 @@ def compute_power(allocations, watt_per_foot, power_specs):
                 break
         if placed:
             continue
-        # Select smallest supply that meets headroom requirement
+        # Select new supply: cheapest that meets headroom
         suitable = [s for s in power_specs if s['W'] >= load * headroom_factor]
         if suitable:
-            spec = min(suitable, key=lambda s: s['W'])
+            spec = min(suitable, key=lambda s: s['cost'])
         else:
-            spec = max_capacity_spec
+            spec = max_spec
         bins.append({
             'W': spec['W'],
             'cost': spec['cost'],
@@ -112,7 +99,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
             'slots': slot_limits.get(spec['W'], 0) - 1,
             'loads': [load]
         })
-    # Build DataFrame
+    # Build output DataFrame
     df = pd.DataFrame([
         {
             'Supply #': i+1,
@@ -123,7 +110,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
         }
         for i, b in enumerate(bins)
     ])
-    # Return DataFrame, total cost, and counts per wattage
+    return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- Configuration Settings ---
