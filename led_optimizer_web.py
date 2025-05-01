@@ -339,7 +339,7 @@ if st.button("Optimize All Orders"):
             for w, cnt in ps_counts_batch.items():
                 batch_pdf.cell(0, 8, f"{w}W: {cnt}", ln=1)
             batch_pdf.ln(4)
-        buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))(batch_pdf.output(dest='S').encode('latin1'))
+        buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
     
     buf.seek(0)
