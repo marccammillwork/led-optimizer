@@ -197,6 +197,13 @@ if st.button("Optimize All Orders"):
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
         # Per-order details
+        order_details = []
+        for o in orders:
+            alloc, summ = optimized_allocation(
+                o['runs'], strip_options, max_connections=10
+            )
+            order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
+# Per-order details
     order_details = []
     for o in orders:
         alloc, summ = optimized_allocation(
