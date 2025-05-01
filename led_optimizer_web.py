@@ -175,8 +175,13 @@ if st.button("Optimize All Orders"):
 
     # Global optimization
     global_runs = [r for o in orders for r in o['runs']]
-    alloc_all, sum_all = optimized_allocation(global_runs, strip_options, max_connections=len(global_runs))
-    df_led = pd.DataFrame(alloc_all)
+    alloc_all, sum_all = optimized_allocation(
+        global_runs, strip_options, max_connections=len(global_runs)
+    )
+    # Determine cutoff usability
+    unusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 2)
+    reusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 1)
+    df_led = pd.DataFrame(alloc_all)(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
     # Per-order details
