@@ -279,7 +279,7 @@ if st.button("Optimize All Orders"):
             st.write(f"**Supply Cost:** ${total_supply_cost:.2f}")
             st.write(f"**Total Lighting Cost:** ${(total_led_cost+total_supply_cost):.2f}")
 
-    # --- Export PDF Reports ---
+        # --- Export PDF Reports ---
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
     pdf_dir = f"{folder}/PDF"
@@ -294,22 +294,41 @@ if st.button("Optimize All Orders"):
             pdf.set_font('Arial', 'B', 12)
             pdf.cell(0, 10, f"Order {order} Report", ln=1)
             pdf.set_font('Arial', '', 10)
-            cols_headers = ['strip_length', 'used', 'waste', 'cost', 'supplies']
+            cols_headers = ['strip_length', 'used', 'Watts', 'waste', 'cost', 'supplies']
+            # Table header
             for h in cols_headers:
                 pdf.cell(40, 8, h, border=1)
             pdf.ln()
-            for r in df_o.itertuples(index=False):
-                for val in r:
-                    pdf.cell(40, 8, str(val), border=1)
-                pdf.cell(40, 8, '', border=1)
+            # Data rows
+            df_o['Watts'] = df_o['used'].apply(lambda used: ", ".join(f"{(l/12)*watt_per_foot:.1f}" for l in used))
+            for row in df_o.itertuples(index=False):
+                pdf.cell(40, 8, str(row.strip_length), border=1)
+                pdf.cell(40, 8, str(row.used), border=1)
+                pdf.cell(40, 8, row.Watts, border=1)
+                pdf.cell(40, 8, str(row.waste), border=1)
+                pdf.cell(40, 8, f"${row.cost:.2f}", border=1)
+                counts_str = ", ".join(f"{w}W:{cnt}" for w, cnt in ps_counts.items())
+                pdf.cell(40, 8, counts_str, border=1)
                 pdf.ln()
-            counts_str = ", ".join(f"{w}W:{cnt}" for w,cnt in ps_counts.items())
-            pdf.cell(40, 8, 'Power Supplies', border=1)
-            pdf.cell(120, 8, counts_str, border=1)
-            pdf.ln()
+            # Summary rows
+            led_cost = od['sum']['led_cost']
+            supply_cost = compute_power(od['alloc'], watt_per_foot, power_specs)[1]
+            total_cost = led_cost + supply_cost
+            summary = [
+                ('Total LED Cost', f"${led_cost:.2f}"),
+                ('Total Supply Cost', f"${supply_cost:.2f}"),
+                ('Total Cost', f"${total_cost:.2f}"),
+                ('Total Waste (in)', f"{od['sum']['waste']:.2f}")
+            ]
+            pdf.ln(2)
+            for label, val in summary:
+                pdf.cell(80, 8, label, border=1)
+                pdf.cell(40, 8, val, border=1)
+                pdf.ln()
             data = pdf.output(dest='S').encode('latin1')
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", data)
-                # Batch PDF
+
+        # Batch PDF
         batch_pdf = FPDF()
         batch_pdf.set_auto_page_break(auto=True, margin=15)
         cols_headers = ['strip_length', 'used', 'Watts', 'waste', 'cost', 'supplies']
@@ -323,24 +342,21 @@ if st.button("Optimize All Orders"):
                 for h in cols_headers:
                     batch_pdf.cell(40, 8, h, border=1)
                 batch_pdf.ln()
-            # Order header row
+            # Order header
             batch_pdf.set_font('Arial', 'B', 12)
             batch_pdf.cell(0, 8, f"Order {od['order']}", ln=1)
-            # Table rows
+            # Data rows
             df_b = pd.DataFrame(od['alloc'])
-            # compute Watts column
             df_b['Watts'] = df_b['used'].apply(lambda used: ", ".join(f"{(l/12)*watt_per_foot:.1f}" for l in used))
             batch_pdf.set_font('Arial', '', 10)
             for row in df_b.itertuples(index=False):
-                # data columns: strip_length, used, Watts, waste, cost
                 batch_pdf.cell(40, 8, str(row.strip_length), border=1)
                 batch_pdf.cell(40, 8, str(row.used), border=1)
                 batch_pdf.cell(40, 8, row.Watts, border=1)
                 batch_pdf.cell(40, 8, str(row.waste), border=1)
                 batch_pdf.cell(40, 8, f"${row.cost:.2f}", border=1)
-                # supplies placeholder cell
-                counts_str_b = ", ".join(f"{w}W:{cnt}" for w,cnt in compute_power(od['alloc'], watt_per_foot, power_specs)[2].items())
-                batch_pdf.cell(40, 8, counts_str_b, border=1)
+                counts_str = ", ".join(f"{w}W:{cnt}" for w, cnt in compute_power(od['alloc'], watt_per_foot, power_specs)[2].items())
+                batch_pdf.cell(40, 8, counts_str, border=1)
                 batch_pdf.ln()
             # Summary rows
             led_cost = od['sum']['led_cost']
@@ -352,20 +368,17 @@ if st.button("Optimize All Orders"):
                 ('Total Cost', f"${total_cost:.2f}"),
                 ('Total Waste (in)', f"{od['sum']['waste']:.2f}")
             ]
-            batch_pdf.set_font('Arial', 'B', 10)
+            batch_pdf.ln(2)
             for label, val in summary:
                 batch_pdf.cell(80, 8, label, border=1)
                 batch_pdf.cell(40, 8, val, border=1)
                 batch_pdf.ln()
             batch_pdf.ln(4)
-        # write batch PDF
+        # Write batch PDF
         data_batch = batch_pdf.output(dest='S').encode('latin1')
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", data_batch)
     buf.seek(0)
     st.download_button("Export PDF Reports", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
-
-st.markdown("---")
-st.write("*Optimized for cost and waste; Power Supplies sized with 15-20% headroom.*")("Export PDF Reports", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
 
 st.markdown("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 15-20% headroom.*")
