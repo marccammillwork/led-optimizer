@@ -200,7 +200,7 @@ if st.button("Optimize All Orders"):
             for u in unsupported:
                 # Display unsupported run in default color
                 st.write(f"- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)")
-        st.error("Please adjust configuration or split runs to fit available power supplies.")("Please adjust configuration or split runs to fit available power supplies.")
+        st.error("Please adjust configuration or split runs to fit available power supplies.")
         st.stop()
     # Parse orders
     # Parse orders
