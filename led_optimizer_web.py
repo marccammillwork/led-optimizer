@@ -213,6 +213,12 @@ if st.button("Optimize All Orders"):
         with st.expander(f"Order {od['order']}"):
             df_o = pd.DataFrame(od['alloc'])
             df_disp = df_o.copy()
+            # Compute Watts for each run based on LED watt per foot
+            df_disp['Watts'] = df_disp['used'].apply(
+                lambda used: ", ".join(f"{(l/12)*watt_per_foot:.1f}" for l in used)
+            )
+            # Reorder columns to place Watts between used and waste
+            df_disp = df_disp[['strip_length','used','Watts','waste','cost']]
             df_disp['cost'] = df_disp['cost'].apply(lambda x: f"${x:.2f}")
             st.subheader("LED Allocations")
             st.dataframe(df_disp, use_container_width=True)
