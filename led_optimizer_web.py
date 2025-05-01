@@ -299,7 +299,47 @@ if st.button("Optimize All Orders"):
             for w, cnt in ps_counts.items():
                 pdf.cell(0, 8, f"{w}W: {cnt}", ln=1)
             pdf.ln(4)
-        buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
+        # ---------- Batch PDF report for all orders ----------
+        batch_pdf = FPDF()
+        batch_pdf.set_auto_page_break(auto=True, margin=15)
+        for idx, od in enumerate(order_details):
+            if idx % 5 == 0:
+                batch_pdf.add_page()
+                batch_pdf.set_font("Arial", "B", 14)
+                batch_pdf.cell(0, 10, "Batch Order Report", ln=1)
+                # Batch table header
+                batch_pdf.set_font("Arial", "B", 12)
+                for col in table_cols:
+                    batch_pdf.cell(45, 8, col, border=1)
+                batch_pdf.ln()
+            # Order header above each table
+            batch_pdf.set_font("Arial", "B", 12)
+            batch_pdf.cell(0, 8, f"Order {od['order']}", ln=1)
+            # Order data rows
+            df_batch = pd.DataFrame(od['alloc'])
+            batch_pdf.set_font("Arial", "", 10)
+            for row in df_batch.itertuples(index=False):
+                for cell in row:
+                    batch_pdf.cell(45, 8, str(cell), border=1)
+                batch_pdf.ln()
+            batch_pdf.ln(2)
+            # Summary rows for batch
+            total_sup = compute_power(od['alloc'], watt_per_foot, power_specs)[1]
+            total_ledc = od['sum']['led_cost']
+            for label, value in [('Total LED Cost', f"${total_ledc:.2f}"), ('Total Supply Cost', f"${total_sup:.2f}"), ('Total LED + Power Supply Cost', f"${(total_ledc+total_sup):.2f}"), ('Total Waste (in)', f"{od['sum']['waste']:.2f}")]:
+                batch_pdf.cell(45, 8, label, border=1)
+                batch_pdf.cell(45, 8, value, border=1)
+                batch_pdf.ln()
+            # Power Supply Usage summary
+            batch_pdf.ln(2)
+            batch_pdf.set_font("Arial", "B", 12)
+            batch_pdf.cell(0, 8, "Power Supply Usage:", ln=1)
+            batch_pdf.set_font("Arial", "", 10)
+            _, _, ps_counts_batch = compute_power(od['alloc'], watt_per_foot, power_specs)
+            for w, cnt in ps_counts_batch.items():
+                batch_pdf.cell(0, 8, f"{w}W: {cnt}", ln=1)
+            batch_pdf.ln(4)
+        buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))(batch_pdf.output(dest='S').encode('latin1'))
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
     
     buf.seek(0)
