@@ -53,10 +53,6 @@ def optimized_allocation(runs, opts, max_connections):
 def compute_power(allocations, watt_per_foot, power_specs):
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
-    # Identify the spec with maximum capacity (highest W)
-    max_capacity_spec = max(power_specs, key=lambda s: s['W'])
-    bins = []
-    for load in sorted(segment_watts, reverse=True): [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
     for load in sorted(segment_watts, reverse=True):
         # If load exceeds the largest spec, split across multiple supplies
