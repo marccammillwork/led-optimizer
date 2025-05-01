@@ -55,17 +55,23 @@ def compute_power(allocations, watt_per_foot, power_specs):
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     bins = []
     for load in sorted(segment_watts, reverse=True):
-        placed = False
-        for b in bins:
-            if b['slots'] > 0 and b['remaining'] >= load:
-                b['remaining'] -= load
-                b['slots'] -= 1
-                b['loads'].append(load)
-                placed = True
-                break
-        if placed:
+        # If load exceeds the largest spec, split across multiple supplies
+        max_W = power_specs[-1]['W']
+        if load > max_W:
+            num_supplies = int(-(-load // max_W))  # ceil division
+            portion = load / num_supplies
+            for _ in range(num_supplies):
+                spec = power_specs[-1]
+                bins.append({
+                    'W': spec['W'],
+                    'cost': spec['cost'],
+                    'remaining': spec['W'] - portion,
+                    'slots': 9,
+                    'loads': [portion]
+                })
             continue
-        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
+        # existing placement logic
+        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)((s for s in power_specs if s['W'] >= load*1.2), None)
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
         bins.append({
