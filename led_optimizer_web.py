@@ -226,8 +226,9 @@ if st.button("Optimize All Orders"):
     st.write(f"- Min Order: {min_order} (${min_cost:.2f})")
     st.write(f"- Max Order: {max_order} (${max_cost:.2f})")
     st.write(f"- Total Unusable Cutoff Waste: {unusable_scrap:.2f} in")
-    st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
     st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
+    st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
+   
     st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
     st.markdown("---")
 
