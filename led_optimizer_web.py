@@ -214,7 +214,7 @@ if st.button("Optimize All Orders"):
             df_o = pd.DataFrame(od['alloc'])
             df_disp = df_o.copy()
             df_disp['cost'] = df_disp['cost'].apply(lambda x: f"${x:.2f}")
-            st.subheader("Allocations")
+            st.subheader("LED Allocations")
             st.dataframe(df_disp, use_container_width=True)
             # Power Supplies
             ps_df, ps_cost, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
