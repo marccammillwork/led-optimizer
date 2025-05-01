@@ -181,7 +181,16 @@ if st.button("Optimize All Orders"):
     # Determine cutoff usability
     unusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 2)
     reusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 1)
-    df_led = pd.DataFrame(alloc_all)
+    # Calculate scrap costs per inch based on strip cost
+    scrap_unusable_cost = sum(
+        a['waste'] * (strip_options[a['strip_length']] / a['strip_length'])
+        for a in alloc_all if len(a['used']) == 2
+    )
+    scrap_reusable_cost = sum(
+        a['waste'] * (strip_options[a['strip_length']] / a['strip_length'])
+        for a in alloc_all if len(a['used']) == 1
+    )
+    df_led = pd.DataFrame(alloc_all)(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
     # Per-order details
@@ -214,6 +223,8 @@ if st.button("Optimize All Orders"):
     st.write(f"- Max Order: {max_order} (${max_cost:.2f})")
     st.write(f"- Total Unusable Cutoff Waste: {unusable_scrap:.2f} in")
     st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
+    st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
+    st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
     st.markdown("---")
 
     # Order Details
