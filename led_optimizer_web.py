@@ -194,43 +194,14 @@ if st.button("Optimize All Orders"):
                 unsupported.append({'order': order_no, 'length': length, 'watts': load})
     if unsupported:
         # Show unsupported runs in red
-    exp_label = f"Unsupported runs: {len(unsupported)}"
-    # HTML label for red text
-    expander_label = f"<span style='color:red'>{exp_label}</span>"
-    with st.expander(expander_label):
-        for u in unsupported:
-            # Display each unsupported run in red
-            st.markdown(
-                f"<span style='color:red'>- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)</span>",
-                unsafe_allow_html=True
-            )
+        exp_label = f"Unsupported runs: {len(unsupported)}"
+        expander_label = f"<span style='color:red'>{exp_label}</span>"
+        with st.expander(expander_label):
             for u in unsupported:
-                st.write(f"- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)")
-        st.error("Please adjust configuration or split runs to fit available power supplies.")
-        st.stop()
-    # Check for unsupported runs
-    headroom_factor = 1.15
-    max_capacity = max(s['W'] for s in power_specs)
-    unsupported = []
-    df_in = st.session_state.df_orders.copy()
-    df_in = df_in[df_in["Order"].astype(str).str.strip() != ""]
-    for _, row in df_in.iterrows():
-        order_no = str(row["Order"]).strip()
-        for run_col in [c for c in df_in.columns if c.startswith("Run")]:
-            val = row[run_col]
-            if pd.isna(val) or val == "":
-                continue
-            length = float(val)
-            load = (length/12) * watt_per_foot
-            if load * headroom_factor > max_capacity:
-                unsupported.append({'order': order_no, 'length': length, 'watts': load})
-    # Display unsupported runs
-    if unsupported:
-        with st.expander(f"Unsupported runs: {len(unsupported)}"):
-            for u in unsupported:
-                st.write(f"- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)")
-    # Proceed only if no unsupported
-    if unsupported:
+                st.markdown(
+                    f"<span style='color:red'>- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)</span>",
+                    unsafe_allow_html=True
+                )
         st.error("Please adjust configuration or split runs to fit available power supplies.")
         st.stop()
     # Parse orders
