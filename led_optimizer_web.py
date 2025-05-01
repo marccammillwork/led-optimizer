@@ -257,19 +257,15 @@ if st.button("Optimize All Orders"):
     # Export ZIP
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
-    csv_dir, excel_dir, pdf_dir = f"{folder}/CSV", f"{folder}/Excel", f"{folder}/PDF"
+    pdf_dir = f"{folder}/PDF"
     with zipfile.ZipFile(buf, 'w') as zf:
         # Individual order exports
         for od in order_details:
             order = od['order']
             df_o = pd.DataFrame(od['alloc'])
             summ = od['sum']
-            # CSV
-            zf.writestr(f"{csv_dir}/{order}_alloc.csv", df_o.to_csv(index=False))
-            zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
-            # Excel (CSV)
-            zf.writestr(f"{excel_dir}/{order}_LED_OPT.csv", df_o.to_csv(index=False))
-            # Individual PDF
+            # CSV            zf.writestr(f"{csv_dir}/{order}_summary.csv", pd.DataFrame([summ]).to_csv(index=False))
+            # Excel (CSV)            # Individual PDF
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 12)
