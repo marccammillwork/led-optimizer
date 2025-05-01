@@ -198,6 +198,37 @@ if st.button("Optimize All Orders"):
     st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
     st.markdown("---")
 
+    # --- UI: Order Results ---
+    # Order-level Summary
+    st.markdown("**Order-level Summary**")
+    total_orders = len(order_details)
+    st.write(f"- Total Orders: {total_orders}")
+    st.write(f"- Total Unusable Cutoff Waste: {unusable_scrap:.2f} in")
+    st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
+    st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
+    st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
+    st.markdown("---")
+    # Detailed Order Views
+    st.header("Order Details")
+    for od in order_details:
+        with st.expander(f"Order {od['order']}"):
+            df_o = pd.DataFrame(od['alloc'])
+            df_disp = df_o.copy()
+            df_disp['cost'] = df_disp['cost'].apply(lambda x: f"${x:.2f}")
+            st.subheader("Allocations")
+            st.dataframe(df_disp, use_container_width=True)
+            # Power Supplies
+            ps_df, ps_cost, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
+            ps_df_disp = ps_df.copy()
+            ps_df_disp['Cost'] = ps_df_disp['Cost'].apply(lambda x: f"${x:.2f}")
+            ps_df_disp['Remaining (W)'] = ps_df_disp['Remaining (W)'].apply(lambda x: f"{x:.1f}W")
+            st.subheader("Power Supplies")
+            st.dataframe(ps_df_disp, use_container_width=True)
+            total_led_cost = od['sum']['led_cost']
+            total_supply_cost = ps_cost
+            st.write(f"**Supply Cost:** ${total_supply_cost:.2f}")
+            st.write(f"**Total Lighting Cost:** ${(total_led_cost+total_supply_cost):.2f}")
+
     # --- Export PDF Reports ---
     buf = io.BytesIO()
     folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
