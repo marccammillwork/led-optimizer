@@ -172,10 +172,17 @@ if st.button("Optimize All Orders"):
         order_no = str(row["Order"]).strip()
         for run_col in [c for c in df_exp.columns if c.startswith("Run")]:
             val = row[run_col]
-            if pd.isna(val) or val == "":
+            # Skip empty or whitespace-only values
+            if pd.isna(val) or str(val).strip() == "":
                 continue
-            length = float(val)
-            load = (length/12) * watt_per_foot
+            length_str = str(val).strip()
+            try:
+                length = float(length_str)
+            except ValueError:
+                # Invalid numeric input
+                st.error(f"Invalid run value '{val}' in order {order_no}")
+                st.stop()
+            load = (length/12) * watt_per_foot (length/12) * watt_per_foot
             if load * headroom_factor > max_capacity:
                 unsupported.append({'order': order_no, 'length': length, 'watts': load})
     if unsupported:
