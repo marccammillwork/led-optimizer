@@ -227,6 +227,9 @@ if st.button("Optimize All Orders"):
             st.subheader("Power Supplies")
             st.dataframe(ps_o, use_container_width=True)
             st.write(f"**Supply Cost:** ${cost_o:.2f}")
+            # Total LED + Power Supply Cost per order
+            total_cost = led_alloc_cost + cost_o
+            st.write(f"**Total Lighting Cost:** ${total_cost:.2f}")
 
     # Export ZIP
     buf = io.BytesIO()
