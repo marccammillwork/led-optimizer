@@ -52,7 +52,9 @@ def optimized_allocation(runs, opts, max_connections):
 
 def compute_power(allocations, watt_per_foot, power_specs):
     # Power supply sizing with 15-20% headroom
-    headroom_factor = 1.15  # 15% headroom
+    headroom_factor = 1.15
+    # Slot capacity per supply wattage
+    slot_limits = {36: 10, 96: 30}
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
     # Identify highest capacity supply
@@ -69,9 +71,20 @@ def compute_power(allocations, watt_per_foot, power_specs):
                     'W': spec['W'],
                     'cost': spec['cost'],
                     'remaining': spec['W'] - portion,
-                    'slots': 9,
+                    'slots': slot_limits.get(spec['W'], 0),
                     'loads': [portion]
                 })
+            continue
+        # Try placing in existing bins
+        placed = False
+        for b in bins:
+            if b['slots'] > 0 and b['remaining'] >= load * headroom_factor:
+                b['remaining'] -= load
+                b['slots'] -= 1
+                b['loads'].append(load)
+                placed = True
+                break
+        if placed:
             continue
         # Select smallest supply that meets headroom requirement
         suitable = [s for s in power_specs if s['W'] >= load * headroom_factor]
@@ -83,7 +96,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
             'W': spec['W'],
             'cost': spec['cost'],
             'remaining': spec['W'] - load,
-            'slots': 9,
+            'slots': slot_limits.get(spec['W'], 0) - 1,
             'loads': [load]
         })
     # Build DataFrame
