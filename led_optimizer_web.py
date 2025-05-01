@@ -8,7 +8,7 @@ from fpdf import FPDF
 # --- Data and Logic ---
 strip_options = {59: 43.26, 118: 74.63, 236: 139.06}
 power_specs = [
-    {'W': 36, 'cost': 26.16},  
+    {'W': 36, 'cost': 26.16},
     {'W': 96, 'cost': 43.04},
 ]
 power_specs.sort(key=lambda s: s['cost']/s['W'])
