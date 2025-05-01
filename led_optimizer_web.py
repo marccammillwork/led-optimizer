@@ -62,8 +62,8 @@ def compute_power(allocations, watt_per_foot, power_specs):
     max_spec = max(power_specs, key=lambda s: s['W'])
     bins = []
     for load in sorted(segment_watts, reverse=True):
-        # If load exceeds nominal capacity, split across max-capacity supplies
-        if load > max_spec['W']:
+                # If load exceeds headroom-adjusted capacity of highest-capacity supply, split across multiples
+        if load * headroom_factor > max_spec['W']:
             num = math.ceil(load / max_spec['W'])
             portion = load / num
             for _ in range(num):
