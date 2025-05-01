@@ -198,11 +198,9 @@ if st.button("Optimize All Orders"):
         expander_label = f"<span style='color:red'>{exp_label}</span>"
         with st.expander(expander_label):
             for u in unsupported:
-                st.markdown(
-                    f"<span style='color:red'>- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)</span>",
-                    unsafe_allow_html=True
-                )
-        st.error("Please adjust configuration or split runs to fit available power supplies.")
+                # Display unsupported run in default color
+                st.write(f"- Order {u['order']}: {u['length']}\" run requires {u['watts']:.1f} W (exceeds capacity)")
+        st.error("Please adjust configuration or split runs to fit available power supplies.")("Please adjust configuration or split runs to fit available power supplies.")
         st.stop()
     # Parse orders
     # Parse orders
