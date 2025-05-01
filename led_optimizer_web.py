@@ -207,7 +207,7 @@ if st.button("Optimize All Orders"):
     waste_used = total_unit_waste - sum_all['waste']
 
     # Order-level Summary
-    st.markdown("**Order-level Summary**")
+    st.markdown("**Batch level Summary**")
     total_orders = len(order_details)
     order_costs = []
     for od in order_details:
