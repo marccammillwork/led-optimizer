@@ -209,20 +209,14 @@ if st.button("Optimize All Orders"):
     df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
-        # Per-order details
-        order_details = []
-        for o in orders:
-            alloc, summ = optimized_allocation(
-                o['runs'], strip_options, max_connections=10
-            )
-            order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
-# Per-order details
+    # Per-order details
     order_details = []
     for o in orders:
         alloc, summ = optimized_allocation(
             o['runs'], strip_options, max_connections=10
         )
         order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
+
     # Order-level Summary
     st.markdown("**Order-level Summary**")
     total_orders = len(orders)
