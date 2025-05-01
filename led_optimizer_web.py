@@ -216,8 +216,11 @@ if st.button("Optimize All Orders"):
             df_o = pd.DataFrame(od['alloc'])
             df_o_disp = df_o.copy()
             df_o_disp['cost'] = df_o_disp['cost'].apply(lambda x: f"${x:.2f}")
-            st.subheader("Allocations")
+            st.subheader("LED Allocations")
             st.dataframe(df_o_disp, use_container_width=True)
+            # Total LED Allocation Cost per order
+            led_alloc_cost = sum(item['cost'] for item in od['alloc'])
+            st.write(f"**Total LED Allocation Cost:** ${led_alloc_cost:.2f}")
             ps_o, cost_o, _ = compute_power(od['alloc'], watt_per_foot, power_specs)
             ps_o['Cost'] = ps_o['Cost'].apply(lambda x: f"${x:.2f}")
             ps_o['Remaining (W)'] = ps_o['Remaining (W)'].apply(lambda x: f"{x:.1f}W")
