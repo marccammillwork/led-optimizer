@@ -182,7 +182,7 @@ if st.button("Optimize All Orders"):
                 # Invalid numeric input
                 st.error(f"Invalid run value '{val}' in order {order_no}")
                 st.stop()
-            load = (length/12) * watt_per_foot (length/12) * watt_per_foot
+            load = (length/12) * watt_per_foot
             if load * headroom_factor > max_capacity:
                 unsupported.append({'order': order_no, 'length': length, 'watts': load})
     if unsupported:
