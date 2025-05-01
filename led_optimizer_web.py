@@ -88,14 +88,20 @@ def compute_power(allocations, watt_per_foot, power_specs):
                 break
         if placed:
             continue
-        # Select new supply among those meeting headroom
+                # Select new supply among those meeting headroom
         suitable = [s for s in power_specs if s['W'] >= load * headroom_factor]
         if suitable:
-            # Choose the most cost-efficient: lowest cost per watt
-            spec = min(suitable, key=lambda s: s['cost']/s['W'])
+            # Choose the supply with lowest total cost
+            spec = min(suitable, key=lambda s: s['cost'])
         else:
             spec = max_spec
         bins.append({
+            'W': spec['W'],
+            'cost': spec['cost'],
+            'remaining': spec['W'] - load,
+            'slots': slot_limits[spec['W']] - 1,
+            'loads': [load]
+        })({
             'W': spec['W'],
             'cost': spec['cost'],
             'remaining': spec['W'] - load,
