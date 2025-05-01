@@ -180,12 +180,14 @@ if st.button("Optimize All Orders"):
     )
     # Determine cutoff usability
     unusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 2)
-    reusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 1)
-    # Calculate scrap costs per inch based on strip cost
+  
+   # Calculate scrap costs per inch based on strip cost
     scrap_unusable_cost = sum(
         a['waste'] * (strip_options[a['strip_length']] / a['strip_length'])
         for a in alloc_all if len(a['used']) == 2
     )
+    reusable_scrap = sum(a['waste'] for a in alloc_all if len(a['used']) == 1)
+   
     scrap_reusable_cost = sum(
         a['waste'] * (strip_options[a['strip_length']] / a['strip_length'])
         for a in alloc_all if len(a['used']) == 1
