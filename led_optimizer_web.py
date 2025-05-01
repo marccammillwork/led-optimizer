@@ -54,28 +54,30 @@ def compute_power(allocations, watt_per_foot, power_specs):
     import math
     # Power supply sizing with ~15% headroom
     headroom_factor = 1.15
-    # Slot capacities
-    slot_limits = {36: 10, 96: 30}
-    # Calculate loads in watts
+    # Slot capacities per wattage
+    slot_limits = {s['W']: (10 if s['W']==36 else 30) for s in power_specs}
+    # Calculate loads in watts for each segment
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
-    # Determine highest-capacity supply
+    # Identify highest-capacity supply
     max_spec = max(power_specs, key=lambda s: s['W'])
     bins = []
+    # Place each load
     for load in sorted(segment_watts, reverse=True):
-                # If load exceeds headroom-adjusted capacity of highest-capacity supply, split across multiples
-        if load * headroom_factor > max_spec['W']:
-            num = math.ceil(load / max_spec['W'])
+        # If load exceeds headroom capacity of highest-capacity supply, split across multiple
+        cap = max_spec['W'] * headroom_factor
+        if load > cap:
+            num = math.ceil(load / cap)
             portion = load / num
             for _ in range(num):
                 bins.append({
                     'W': max_spec['W'],
                     'cost': max_spec['cost'],
                     'remaining': max_spec['W'] - portion,
-                    'slots': slot_limits.get(max_spec['W'], 0),
+                    'slots': slot_limits[max_spec['W']],
                     'loads': [portion]
                 })
             continue
-        # Try filling existing bins with headroom
+        # Try placing in existing bins
         placed = False
         for b in bins:
             if b['slots'] > 0 and b['remaining'] >= load * headroom_factor:
@@ -86,10 +88,10 @@ def compute_power(allocations, watt_per_foot, power_specs):
                 break
         if placed:
             continue
-                # Select new supply: most cost-efficient (cost per watt) that meets headroom
+        # Select new supply among those meeting headroom
         suitable = [s for s in power_specs if s['W'] >= load * headroom_factor]
         if suitable:
-            # Choose spec with lowest cost per watt
+            # Choose the most cost-efficient: lowest cost per watt
             spec = min(suitable, key=lambda s: s['cost']/s['W'])
         else:
             spec = max_spec
@@ -97,13 +99,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
             'W': spec['W'],
             'cost': spec['cost'],
             'remaining': spec['W'] - load,
-            'slots': slot_limits.get(spec['W'], 0) - 1,
-            'loads': [load]
-        })({
-            'W': spec['W'],
-            'cost': spec['cost'],
-            'remaining': spec['W'] - load,
-            'slots': slot_limits.get(spec['W'], 0) - 1,
+            'slots': slot_limits[spec['W']] - 1,
             'loads': [load]
         })
     # Build output DataFrame
@@ -117,6 +113,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
         }
         for i, b in enumerate(bins)
     ])
+    # Return DataFrame, total cost, and counts per wattage
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
