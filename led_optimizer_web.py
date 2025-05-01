@@ -208,27 +208,75 @@ if st.button("Optimize All Orders"):
 
     # Order-level Summary
     st.markdown("**Batch level Summary**")
-    total_orders = len(order_details)
-    order_costs = []
-    for od in order_details:
-        led_cost = sum(item['cost'] for item in od['alloc'])
-        _, supply_cost, _ = compute_power(od['alloc'], watt_per_foot, power_specs)
-        order_costs.append((od['order'], led_cost + supply_cost))
-    if total_orders:
-        avg_cost = sum(c for _, c in order_costs) / total_orders
-        min_order, min_cost = min(order_costs, key=lambda x: x[1])
-        max_order, max_cost = max(order_costs, key=lambda x: x[1])
-    else:
-        avg_cost = min_cost = max_cost = 0.0
-        min_order = max_order = "N/A"
-    st.write(f"- Total Orders: {total_orders}")
-    st.write(f"- Average Cost: ${avg_cost:.2f}")
-    st.write(f"- Min Order: {min_order} (${min_cost:.2f})")
-    st.write(f"- Max Order: {max_order} (${max_cost:.2f})")
-    st.write(f"- Total Unusable Cutoff Waste: {unusable_scrap:.2f} in")
-    st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
-    st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
-   
     st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
     st.markdown("---")
+
+    # --- Export PDF Reports ---
+    buf = io.BytesIO()
+    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    pdf_dir = f"{folder}/PDF"
+    with zipfile.ZipFile(buf, 'w') as zf:
+        # Individual PDFs
+        for od in order_details:
+            order = od['order']
+            df_o = pd.DataFrame(od['alloc'])
+            # compute supply counts
+            _, _, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 10, f"Order {order} Report", ln=1)
+            pdf.set_font('Arial', '', 10)
+            # Table headers including Supplies column
+            cols_headers = ['strip_length', 'used', 'waste', 'cost', 'supplies']
+            for h in cols_headers:
+                pdf.cell(40, 8, h, border=1)
+            pdf.ln()
+            # Table rows
+            for r in df_o.itertuples(index=False):
+                for val in r:
+                    pdf.cell(40, 8, str(val), border=1)
+                pdf.cell(40, 8, '', border=1)
+                pdf.ln()
+            # Supply summary row within table
+            counts_str = ", ".join(f"{w}W:{cnt}" for w,cnt in ps_counts.items())
+            pdf.cell(40, 8, 'Power Supplies', border=1)
+            pdf.cell(120, 8, counts_str, border=1)
+            pdf.ln()
+            # write PDF
+            data = pdf.output(dest='S').encode('latin1')
+            zf.writestr(f"{pdf_dir}/{order}_report.pdf", data)
+        # Batch PDF
+        batch_pdf = FPDF()
+        batch_pdf.set_auto_page_break(auto=True, margin=15)
+        for idx, od in enumerate(order_details):
+            if idx % 5 == 0:
+                batch_pdf.add_page()
+                batch_pdf.set_font('Arial', 'B', 14)
+                batch_pdf.cell(0, 10, 'Batch Order Report', ln=1)
+                # table headers
+                batch_pdf.set_font('Arial', 'B', 12)
+                for h in cols_headers:
+                    batch_pdf.cell(40, 8, h, border=1)
+                batch_pdf.ln()
+            # order rows
+            df_b = pd.DataFrame(od['alloc'])
+            _, _, ps_counts_b = compute_power(od['alloc'], watt_per_foot, power_specs)
+            batch_pdf.set_font('Arial', '', 10)
+            for r in df_b.itertuples(index=False):
+                for val in r:
+                    batch_pdf.cell(40, 8, str(val), border=1)
+                batch_pdf.cell(40, 8, '', border=1)
+                batch_pdf.ln()
+            # supply row
+            counts_str = ", ".join(f"{w}W:{cnt}" for w,cnt in ps_counts_b.items())
+            batch_pdf.cell(40, 8, 'Power Supplies', border=1)
+            batch_pdf.cell(120, 8, counts_str, border=1)
+            batch_pdf.ln(4)
+        data_batch = batch_pdf.output(dest='S').encode('latin1')
+        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", data_batch)
+    buf.seek(0)
+    st.download_button("Export PDF Reports", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
+
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")("---")
 st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
