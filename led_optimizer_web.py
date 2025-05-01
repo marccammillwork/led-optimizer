@@ -284,20 +284,21 @@ if st.button("Optimize All Orders"):
                 for cell in row:
                     pdf.cell(45, 8, str(cell), border=1)
                 pdf.ln()
+            pdf.ln(4)
             # Summary rows
-            for label, value in summary_rows:
-                batch_pdf.cell(45, 8, label, border=1)
-                batch_pdf.cell(45, 8, value, border=1)
-                batch_pdf.ln()
-            # Add power supply usage breakdown
-            ps_df_batch, _, ps_counts_batch = compute_power(od['alloc'], watt_per_foot, power_specs)
-            batch_pdf.ln(2)
-            batch_pdf.set_font("Arial", "B", 12)
-            batch_pdf.cell(0, 8, "Power Supply Usage:", ln=1)
-            batch_pdf.set_font("Arial", "", 10)
-            for w, cnt in ps_counts_batch.items():
-                batch_pdf.cell(0, 8, f"{w}W: {cnt}", ln=1)
-            batch_pdf.ln(4)
+            for label, value in [('Total LED Cost', f"${summ['led_cost']:.2f}"), ('Total Supply Cost', f"${compute_power(od['alloc'], watt_per_foot, power_specs)[1]:.2f}"), ('Total LED + Power Supply Cost', f"${(summ['led_cost']+compute_power(od['alloc'], watt_per_foot, power_specs)[1]):.2f}"), ('Total Waste (in)', f"{summ['waste']:.2f}")]:
+                pdf.cell(45, 8, label, border=1)
+                pdf.cell(45, 8, value, border=1)
+                pdf.ln()
+            # Power Supply Usage summary
+            pdf.ln(2)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, "Power Supply Usage:", ln=1)
+            pdf.set_font("Arial", "", 10)
+            _, _, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
+            for w, cnt in ps_counts.items():
+                pdf.cell(0, 8, f"{w}W: {cnt}", ln=1)
+            pdf.ln(4)
         buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
     
