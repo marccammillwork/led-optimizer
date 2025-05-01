@@ -51,17 +51,20 @@ def optimized_allocation(runs, opts, max_connections):
     return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
 
 def compute_power(allocations, watt_per_foot, power_specs):
+    # Power supply sizing with 15-20% headroom
+    headroom_factor = 1.15  # 15% headroom
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
+    # Identify highest capacity supply
+    max_capacity_spec = max(power_specs, key=lambda s: s['W'])
     bins = []
     for load in sorted(segment_watts, reverse=True):
-        # If load exceeds the largest spec, split across multiple supplies
-        max_W = power_specs[-1]['W']
-        if load > max_W:
-            num_supplies = int(-(-load // max_W))  # ceil division
+        # If load exceeds headroom of highest-capacity supply, split across multiples
+        if load > max_capacity_spec['W'] * headroom_factor:
+            num_supplies = int(-(-load // (max_capacity_spec['W'] * headroom_factor)))
             portion = load / num_supplies
             for _ in range(num_supplies):
-                spec = power_specs[-1]
+                spec = max_capacity_spec
                 bins.append({
                     'W': spec['W'],
                     'cost': spec['cost'],
@@ -70,10 +73,12 @@ def compute_power(allocations, watt_per_foot, power_specs):
                     'loads': [portion]
                 })
             continue
-        # existing placement logic
-        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
-        if not spec:
-            spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
+        # Select smallest supply that meets headroom requirement
+        suitable = [s for s in power_specs if s['W'] >= load * headroom_factor]
+        if suitable:
+            spec = min(suitable, key=lambda s: s['W'])
+        else:
+            spec = max_capacity_spec
         bins.append({
             'W': spec['W'],
             'cost': spec['cost'],
@@ -81,6 +86,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
             'slots': 9,
             'loads': [load]
         })
+    # Build DataFrame
     df = pd.DataFrame([
         {
             'Supply #': i+1,
@@ -91,6 +97,7 @@ def compute_power(allocations, watt_per_foot, power_specs):
         }
         for i, b in enumerate(bins)
     ])
+    # Return DataFrame, total cost, and counts per wattage
     return df, df['Cost'].sum(), df['Wattage'].value_counts().to_dict()
 
 # --- Configuration Settings ---
@@ -293,4 +300,4 @@ if st.button("Optimize All Orders"):
     st.download_button("Export PDF Reports", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
 
 st.markdown("---")
-st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
+st.write("*Optimized for cost and waste; Power Supplies sized with 15-20% headroom.*")
