@@ -50,7 +50,6 @@ def optimized_allocation(runs, opts, max_connections):
     total_waste = sum(a['waste'] for a in allocations)
     return allocations, {'connections': total_conns, 'led_cost': total_cost, 'waste': total_waste}
 
-@st.cache_data
 def compute_power(allocations, watt_per_foot, power_specs):
     # Calculate segment watt loads using configurable watt_per_foot
     segment_watts = [(l/12)*watt_per_foot for a in allocations for l in a['used']]
@@ -71,7 +70,8 @@ def compute_power(allocations, watt_per_foot, power_specs):
                     'loads': [portion]
                 })
             continue
-        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)
+        # existing placement logic
+        spec = next((s for s in power_specs if s['W'] >= load*1.2), None)((s for s in power_specs if s['W'] >= load*1.2), None)
         if not spec:
             spec = next((s for s in power_specs if s['W'] >= load), power_specs[-1])
         bins.append({
@@ -189,12 +189,22 @@ if st.button("Optimize All Orders"):
     df_led = pd.DataFrame(alloc_all)
     df_ps, ps_cost, ps_counts = compute_power(alloc_all, watt_per_foot, power_specs)
 
+    # Per-order details
+    order_details = []
+    total_unit_waste = 0
+    for o in orders:
+        alloc, summ = optimized_allocation(o['runs'], strip_options, max_connections=10)
+        total_unit_waste += summ['waste']
+        order_details.append({'order': o['order'], 'alloc': alloc, 'sum': summ})
+    waste_used = total_unit_waste - sum_all['waste']
+
     # Order-level Summary
     st.markdown("**Batch level Summary**")
     st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
     st.markdown("---")
 
     # --- UI: Order Results ---
+    # Order-level Summary
     st.markdown("**Order-level Summary**")
     total_orders = len(order_details)
     st.write(f"- Total Orders: {total_orders}")
@@ -202,4 +212,93 @@ if st.button("Optimize All Orders"):
     st.write(f"- Cost of Unusable Cutoff Waste: ${scrap_unusable_cost:.2f}")
     st.write(f"- Total Available Scrap for Next Batch: {reusable_scrap:.2f} in")
     st.write(f"- Cost of Available Scrap for Next Batch: ${scrap_reusable_cost:.2f}")
-    st.ma
+    st.markdown("---")
+    # Detailed Order Views
+    st.header("Order Details")
+    for od in order_details:
+        with st.expander(f"Order {od['order']}"):
+            df_o = pd.DataFrame(od['alloc'])
+            df_disp = df_o.copy()
+            # Compute Watts for each run based on LED watt per foot
+            df_disp['Watts'] = df_disp['used'].apply(
+                lambda used: ", ".join(f"{(l/12)*watt_per_foot:.1f}" for l in used)
+            )
+            # Reorder columns to place Watts between used and waste
+            df_disp = df_disp[['strip_length','used','Watts','waste','cost']]
+            df_disp['cost'] = df_disp['cost'].apply(lambda x: f"${x:.2f}")
+            st.subheader("LED Allocations")
+            st.dataframe(df_disp, use_container_width=True)
+            # Power Supplies
+            ps_df, ps_cost, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
+            ps_df_disp = ps_df.copy()
+            ps_df_disp['Cost'] = ps_df_disp['Cost'].apply(lambda x: f"${x:.2f}")
+            ps_df_disp['Remaining (W)'] = ps_df_disp['Remaining (W)'].apply(lambda x: f"{x:.1f}W")
+            st.subheader("Power Supplies")
+            st.dataframe(ps_df_disp, use_container_width=True)
+            total_led_cost = od['sum']['led_cost']
+            total_supply_cost = ps_cost
+            st.write(f"**Supply Cost:** ${total_supply_cost:.2f}")
+            st.write(f"**Total Lighting Cost:** ${(total_led_cost+total_supply_cost):.2f}")
+
+    # --- Export PDF Reports ---
+    buf = io.BytesIO()
+    folder = f"LED_OPT_{datetime.now().strftime('%m%d%y')}"
+    pdf_dir = f"{folder}/PDF"
+    with zipfile.ZipFile(buf, 'w') as zf:
+        # Individual PDFs
+        for od in order_details:
+            order = od['order']
+            df_o = pd.DataFrame(od['alloc'])
+            _, _, ps_counts = compute_power(od['alloc'], watt_per_foot, power_specs)
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 10, f"Order {order} Report", ln=1)
+            pdf.set_font('Arial', '', 10)
+            cols_headers = ['strip_length', 'used', 'waste', 'cost', 'supplies']
+            for h in cols_headers:
+                pdf.cell(40, 8, h, border=1)
+            pdf.ln()
+            for r in df_o.itertuples(index=False):
+                for val in r:
+                    pdf.cell(40, 8, str(val), border=1)
+                pdf.cell(40, 8, '', border=1)
+                pdf.ln()
+            counts_str = ", ".join(f"{w}W:{cnt}" for w,cnt in ps_counts.items())
+            pdf.cell(40, 8, 'Power Supplies', border=1)
+            pdf.cell(120, 8, counts_str, border=1)
+            pdf.ln()
+            data = pdf.output(dest='S').encode('latin1')
+            zf.writestr(f"{pdf_dir}/{order}_report.pdf", data)
+        # Batch PDF
+        batch_pdf = FPDF()
+        batch_pdf.set_auto_page_break(auto=True, margin=15)
+        cols_headers = ['strip_length', 'used', 'waste', 'cost', 'supplies']
+        for idx, od in enumerate(order_details):
+            if idx % 5 == 0:
+                batch_pdf.add_page()
+                batch_pdf.set_font('Arial', 'B', 14)
+                batch_pdf.cell(0, 10, 'Batch Order Report', ln=1)
+                batch_pdf.set_font('Arial', 'B', 12)
+                for h in cols_headers:
+                    batch_pdf.cell(40, 8, h, border=1)
+                batch_pdf.ln()
+            df_b = pd.DataFrame(od['alloc'])
+            _, _, ps_counts_b = compute_power(od['alloc'], watt_per_foot, power_specs)
+            batch_pdf.set_font('Arial', '', 10)
+            for r in df_b.itertuples(index=False):
+                for val in r:
+                    batch_pdf.cell(40, 8, str(val), border=1)
+                batch_pdf.cell(40, 8, '', border=1)
+                batch_pdf.ln()
+            counts_str_b = ", ".join(f"{w}W:{cnt}" for w,cnt in ps_counts_b.items())
+            batch_pdf.cell(40, 8, 'Power Supplies', border=1)
+            batch_pdf.cell(120, 8, counts_str_b, border=1)
+            batch_pdf.ln(4)
+        data_batch = batch_pdf.output(dest='S').encode('latin1')
+        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", data_batch)
+    buf.seek(0)
+    st.download_button("Export PDF Reports", data=buf.getvalue(), file_name=f"{folder}.zip", mime="application/zip")
+
+st.markdown("---")
+st.write("*Optimized for cost and waste; Power Supplies sized with 20-25% headroom.*")
