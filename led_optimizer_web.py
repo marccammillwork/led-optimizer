@@ -242,6 +242,14 @@ if st.button("Optimize All Orders"):
             batch_pdf.ln(4)
         buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
         zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
+    # finalize ZIP and present download button
+    buf.seek(0)
+    st.download_button(
+        "Export PDF Reports",
+        data=buf.getvalue(),
+        file_name=f"{folder}.zip",
+        mime="application/zip"
+    )
     # after zf context, add download button
     buf.seek(0)
     st.download_button(
