@@ -72,7 +72,8 @@ def compute_power(allocations, watt_per_foot, power_specs):
             continue
         suitable = [s for s in power_specs if s['W'] >= required]
         if suitable:
-            spec = min(suitable, key=lambda s: s['cost']/s['W'])
+            # Choose the supply with the lowest absolute cost
+            spec = min(suitable, key=lambda s: s['cost'])
         else:
             spec = max_spec
         bins.append({'W': spec['W'], 'cost': spec['cost'], 'remaining': spec['W'] - load, 'slots': slot_limits[spec['W']] - 1, 'loads': [load]})
