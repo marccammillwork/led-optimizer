@@ -106,4 +106,3 @@ def compute_power(allocations, watt_per_foot, power_specs):
      return df, total_cost, counts
 
 # --- Configuration Settings ---
-
