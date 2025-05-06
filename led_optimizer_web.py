@@ -241,8 +241,8 @@ if st.button("Optimize All Orders"):
                 batch_pdf.cell(30,8,",".join(f"{w}W:{cnt}" for w,cnt in counts_b.items()),border=1)
                 batch_pdf.ln()
             batch_pdf.ln(4)
-        buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
-        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
+            buf_batch = io.BytesIO(batch_pdf.output(dest='S').encode('latin1'))
+            zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf", buf_batch.read())
     # finalize ZIP and present download button
     buf.seek(0)
     st.download_button(
