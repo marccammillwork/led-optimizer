@@ -215,9 +215,9 @@ if st.button("Optimize All Orders"):
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", buf_pdf.read())
         
         # ----- Batch PDF report for all orders -----
-                batch_pdf = FPDF()
-                batch_pdf.set_auto_page_break(auto=True, margin=15)
-                headers = ['strip_length','used','Watts','waste','cost','supplies']
+            batch_pdf = FPDF()
+            batch_pdf.set_auto_page_break(auto=True, margin=15)
+            headers = ['strip_length','used','Watts','waste','cost','supplies']
             for idx, od in enumerate(orders):
                 if idx % 5 == 0:
                 batch_pdf.add_page()
