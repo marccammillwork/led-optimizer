@@ -224,7 +224,15 @@ if st.button("Optimize All Orders"):
                 pdf.cell(30,8,h,border=1)
             pdf.ln()
             for row in df_o.itertuples(index=False):
-                pdf.cell(30,8,str(row.strip_length),border=1)
+                pdf.cell(30, 8, str(row.strip_length), border=1)
+                pdf.cell(30, 8, str(row.used), border=1)
+                pdf.cell(30, 8, row.Watts, border=1)
+                pdf.cell(30, 8, str(row.waste), border=1)
+                pdf.cell(30, 8, f"${row.cost:.2f}", border=1)
+                # Supplies column
+                supplies_str = ", ".join(f"{w}W:{cnt}" for w,cnt in counts_o.items())
+                pdf.cell(30, 8, supplies_str, border=1)
+                pdf.ln(),str(row.strip_length),border=1)
                 pdf.cell(30,8,str(row.used),border=1)
                 pdf.cell(30,8,row.Watts,border=1)
                 pdf.cell(30,8,str(row.waste),border=1)
