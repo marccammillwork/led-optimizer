@@ -219,7 +219,7 @@ if st.button("Optimize All Orders"):
                 pdf.cell(30,8,row.Watts,border=1)
                 pdf.cell(30,8,str(row.waste),border=1)
                 pdf.cell(30,8,f"${row.cost:.2f}",border=1)
-                pdf.cell(30,8", ".join(f"{w}W:{cnt}" for w,cnt in counts_o.items()),border=1)
+                pdf.cell(30, 8, ", ".join(f"{w}W:{cnt}" for w,cnt in counts_o.items()),border=1)
                 pdf.ln()
             # Summary rows
             total_led=summ['led_cost']
