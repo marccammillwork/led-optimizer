@@ -213,12 +213,13 @@ if st.button("Optimize All Orders"):
                 pdf.ln()
             buf_pdf = io.BytesIO(pdf.output(dest='S').encode('latin1'))
             zf.writestr(f"{pdf_dir}/{order}_report.pdf", buf_pdf.read())
+        
         # ----- Batch PDF report for all orders -----
-        batch_pdf = FPDF()
-        batch_pdf.set_auto_page_break(auto=True, margin=15)
-        headers = ['strip_length','used','Watts','waste','cost','supplies']
-        for idx, od in enumerate(orders):
-            if idx % 5 == 0:
+                batch_pdf = FPDF()
+                batch_pdf.set_auto_page_break(auto=True, margin=15)
+                headers = ['strip_length','used','Watts','waste','cost','supplies']
+            for idx, od in enumerate(orders):
+                if idx % 5 == 0:
                 batch_pdf.add_page()
                 batch_pdf.set_font('Arial','B',14)
                 batch_pdf.cell(0,10,'Batch Order Report',ln=1)
