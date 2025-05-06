@@ -254,20 +254,4 @@ if st.button("Optimize All Orders"):
                 batch_pdf.cell(30,8,row.Watts,border=1)
                 batch_pdf.cell(30,8,str(row.waste),border=1)
                 batch_pdf.cell(30,8,f"${row.cost:.2f}",border=1)
-                batch_pdf.cell(30, 8, ".join(f"{w}W:{cnt}" for w,cnt in counts_b.items()),border=1)
-                batch_pdf.ln()
-            total_led=sum(a['cost'] for a in alloc)
-            total_sup=compute_power(alloc,watt_per_foot,power_specs)[1]
-            batch_pdf.ln(2)
-            for label,val in [('Total LED Cost',f"${total_led:.2f}"),('Total Supply Cost',f"${total_sup:.2f}"),('Total Waste (in)',f"{sum(a['waste'] for a in alloc):.2f}")]:
-                batch_pdf.cell(60,8,label,border=1)
-                batch_pdf.cell(30,8,val,border=1)
-                batch_pdf.ln()
-        data_b=batch_pdf.output(dest='S').encode('latin1')
-        zf.writestr(f"{pdf_dir}/_BATCH_REPORT.pdf",data_b)
-    buf.seek(0)
-    st.download_button("Export PDF Reports",data=buf.getvalue(),file_name=f"{folder}.zip",mime="application/zip")
-
-st.markdown("---")
-
-st.write("*Optimized for cost and waste; Power Supplies sized with 15-20% headroom.*")
+                batch_pdf.cell(30, 8, ", ".join(f"{w}W:{cnt}" for w,cnt in counts_b.items()), border=1)
