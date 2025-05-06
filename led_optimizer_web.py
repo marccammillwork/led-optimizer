@@ -187,7 +187,7 @@ if st.button("Optimize All Orders"):
     st.markdown("---")
 
     st.header("Order Details")
-            for od in orders:
+    for od in orders:
             order = od['order']
             alloc, summ = optimized_allocation(od['runs'], strip_options, max_connections=10)
             df_o = pd.DataFrame(alloc)
