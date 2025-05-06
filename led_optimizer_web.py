@@ -52,5 +52,57 @@ def optimized_allocation(runs, opts, max_connections):
 
 @st.cache_data
 def compute_power(allocations, watt_per_foot, power_specs):
-    import math
-    headroom_factor = 1.10  # 10% headroom
+     import math
+     # Power supply sizing with ~10% headroom
+     headroom_factor = 1.10  # 10% headroom
+     # Slot capacities per wattage
+     slot_limits = {s['W']: (10 if s['W']==36 else 30) for s in power_specs}
+     # Compute loads in watts for LED segments
+     segment_watts = [(length/12)*watt_per_foot for alloc in allocations for length in alloc['used']]
+     # Prepare supply bins
+     bins = []
+     # Identify highest capacity spec
+     max_spec = max(power_specs, key=lambda s: s['W'])
+     for load in sorted(segment_watts, reverse=True):
+         placed = False
+         required = load * headroom_factor
+         # Try placing into existing bins
+         for b in bins:
+             if b['slots'] > 0 and b['remaining'] >= required:
+                 b['remaining'] -= load
+                 b['slots'] -= 1
+                 b['loads'].append(load)
+                 placed = True
+                 break
+         if placed:
+             continue
+         # Need new supply
+         suitable = [s for s in power_specs if s['W'] >= required]
+         if suitable:
+             # Pick cheapest absolute cost
+             spec = min(suitable, key=lambda s: s['cost'])
+         else:
+             spec = max_spec
+         bins.append({
+             'W': spec['W'],
+             'cost': spec['cost'],
+             'remaining': spec['W'] - load,
+             'slots': slot_limits.get(spec['W'], 0) - 1,
+             'loads': [load]
+         })
+     # Build DataFrame
+     df = pd.DataFrame([
+         {
+             'Supply #': i+1,
+             'Wattage': b['W'],
+             'Cost': b['cost'],
+             'Loads (W)': ", ".join(f"{l:.1f}" for l in b['loads']),
+             'Remaining (W)': round(b['remaining'], 1)
+         }
+         for i, b in enumerate(bins)
+     ])
+     total_cost = df['Cost'].sum()
+     counts = df['Wattage'].value_counts().to_dict()
+     return df, total_cost, counts
+
+# --- Configuration Settings ---
