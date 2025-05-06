@@ -254,7 +254,7 @@ if st.button("Optimize All Orders"):
                 batch_pdf.cell(30,8,row.Watts,border=1)
                 batch_pdf.cell(30,8,str(row.waste),border=1)
                 batch_pdf.cell(30,8,f"${row.cost:.2f}",border=1)
-                batch_pdf.cell(30,8", ".join(f"{w}W:{cnt}" for w,cnt in counts_b.items()),border=1)
+                batch_pdf.cell(30, 8, ".join(f"{w}W:{cnt}" for w,cnt in counts_b.items()),border=1)
                 batch_pdf.ln()
             total_led=sum(a['cost'] for a in alloc)
             total_sup=compute_power(alloc,watt_per_foot,power_specs)[1]
