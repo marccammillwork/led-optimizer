@@ -53,7 +53,7 @@ def optimized_allocation(runs, opts, max_connections):
 @st.cache_data
 def compute_power(allocations, watt_per_foot, power_specs):
     import math
-    headroom_factor = 1.15
+    headroom_factor = 1.20  # 20% headroom (minimum 15-20%)
     slot_limits = {s['W']: (10 if s['W']==36 else 30) for s in power_specs}
     segment_watts = [(length/12)*watt_per_foot for alloc in allocations for length in alloc['used']]
     bins = []
